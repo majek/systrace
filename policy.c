@@ -52,6 +52,9 @@
 #include <fcntl.h>
 #include <ctype.h>
 #include <err.h>
+#ifdef HAVE_LIBGEN_H
+#include <libgen.h>
+#endif
 
 #include "intercept.h"
 #include "systrace.h"
@@ -177,6 +180,34 @@ systrace_findpolicy(const char *name)
 }
 
 struct policy *
+systrace_findpolicy_wildcard(const char *name)
+{
+	struct policy tmp, *res;
+	static char path[MAXPATHLEN], lookup[MAXPATHLEN];
+
+	if (strlcpy(path, name, sizeof(path)) >= sizeof(path))
+		errx(1, "%s: path name overflow", __func__);
+
+	strlcpy(lookup, "*/", sizeof(lookup));
+	strlcat(lookup, basename(path), sizeof(lookup));
+	
+	tmp.name = lookup;
+	res = SPLAY_FIND(policytree, &policyroot, &tmp);
+	if (res == NULL)
+		return (NULL);
+
+	/* we found the wildcarded policy; now remove it and bind it */
+	SPLAY_REMOVE(policytree, &policyroot, res);
+
+	free((char *)res->name);
+	if ((res->name = strdup(name)) == NULL)
+		err(1, "%s: strdup", __func__);
+
+	SPLAY_INSERT(policytree, &policyroot, res);
+	return (res);
+}
+
+struct policy *
 systrace_findpolnr(int nr)
 {
 	struct policy tmp;
@@ -211,6 +242,9 @@ systrace_newpolicy(const char *emulation, const char *name)
 	if ((tmp = systrace_findpolicy(name)) != NULL)
 		return (tmp);
 
+	if ((tmp = systrace_findpolicy_wildcard(name)) != NULL)
+		return (tmp);
+	
 	tmp = calloc(1, sizeof(struct policy));
 	if (tmp == NULL)
 		return (NULL);

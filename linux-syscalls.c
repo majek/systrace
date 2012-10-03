@@ -153,18 +153,6 @@ linux_clonepid(struct intercept_pid *opid, struct intercept_pid *npid)
 {
 }
 
-static int
-linux_syscall_number(const char *emulation, const char *name)
-{
-	int i;
-
-	for (i = 0; i < NR_syscalls; i++)
-		if (!strcmp(name, linux_syscallnames[i]))
-			return i;
-
-	return (-1);
-}
-
 static short
 linux_translate_policy(short policy)
 {

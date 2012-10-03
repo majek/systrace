@@ -282,6 +282,63 @@ print_sockaddr(char *buf, size_t buflen, struct intercept_translate *tl)
         return (0);
 }
 
+static int
+get_msghdr(struct intercept_translate *trans, int fd, pid_t pid,
+    void *addr)
+{
+ 	struct msghdr msg;
+	int len = sizeof(struct msghdr);
+	unsigned long *args;
+	int call = (intptr_t)trans->trans_addr2;
+
+	if (get_socketcall_args(trans, fd, pid, addr) == -1)
+		return (-1);
+
+	if (trans->trans_valid == 0)
+		return (0);
+
+	args = trans->trans_data;
+	if (intercept.io(fd, pid, INTERCEPT_READ, args[1],
+		(void *)&msg, len) == -1)
+		return (-1);
+
+	if (msg.msg_name == NULL) {
+		trans->trans_data = NULL;
+		trans->trans_size = 0;
+		return (0);
+	}
+
+	trans->trans_size = msg.msg_namelen;
+	trans->trans_data = malloc(len);
+	if (trans->trans_data == NULL)
+		return (-1);
+	if (intercept.io(fd, pid, INTERCEPT_READ, msg.msg_name,
+		(void *)trans->trans_data, trans->trans_size) == -1)
+		return (-1);
+	
+        return (0);
+}
+
+static int
+print_msghdr(char *buf, size_t buflen, struct intercept_translate *tl)
+{
+	int res = 0;
+	if (tl->trans_size == 0) {
+		snprintf(buf, buflen, "<unknown>");
+	} else {
+		res = print_sockaddr(buf, buflen, tl);
+		/*
+		 * disable replacement of this argument because it's two levels
+		 * deep and we cant replace that far.
+		 */
+		tl->trans_size = 0;
+		
+		/* TODO: make this less of a hack */
+	}
+
+	return (res);
+}
+
 struct intercept_translate ic_linux_socket_sockdom = {
         "sockdom",
         get_socketcall_args, print_sockdom,
@@ -315,6 +372,13 @@ struct intercept_translate ic_linux_sendto_sockaddr = {
         get_sockaddr, print_sockaddr,
 	-1,
 	.user = (void *)LINUX_SYS_sendto
+};
+
+struct intercept_translate ic_linux_sendmsg_sockaddr = {
+        "sockaddr",
+        get_msghdr, print_msghdr,
+	-1,
+	.user = (void *)LINUX_SYS_sendmsg
 };
 
 struct intercept_translate ic_linux_socketcall_catchall = {

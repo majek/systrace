@@ -69,8 +69,15 @@ typedef u_int32_t u32;
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
+#ifdef HAVE_SCHED_H
 #include <sched.h>
+#else
+#ifdef    HAVE_LINUX_SCHED_H
+#include <linux/sched.h>
+#endif    /* HAVE_LINUX_SCHED_H */
+#endif
 
+#include <event.h>
 #include <errno.h>
 
 #undef DEBUG
@@ -170,9 +177,17 @@ struct linux_data {
 
 static int notify_fd = -1; 
 
+static void
+linux_term_signal(int fd, short what, void *arg)
+{
+	/* We intercepted a termination signal and should exit */
+	exit(2);
+}
+
 static int
 linux_init(void)
 {
+	static struct event sigterm_ev, sigint_ev;
 	memset(policy_used, 0, sizeof(policy_used));
 
         /*
@@ -187,6 +202,11 @@ linux_init(void)
         if (atexit(&linux_atexit) < 0)
                 errx(1, "atexit");
 
+	signal_set(&sigint_ev, SIGINT, linux_term_signal, NULL);
+	signal_add(&sigint_ev, NULL);
+	signal_set(&sigterm_ev, SIGTERM, linux_term_signal, NULL);
+	signal_add(&sigterm_ev, NULL);
+	
 	return (0);
 }
 
@@ -518,8 +538,16 @@ linux_childdead(pid_t pid, int status)
 		linux_childdead(ppid, parent_data->wstatus);
 	
 out:
-	if (!already_detached)
-		ptrace(PTRACE_DETACH, pid, (char *)1, 0);
+	if (!already_detached) {
+		if (ptrace(PTRACE_DETACH, pid, (char *)1, 0) == -1) {
+			if (errno != ESRCH)
+				err(1, "%s: ptrace(DETACH)", __func__);
+			if (kill(pid, 0) == -1) {
+				if (errno != ESRCH)
+					err(1, "%s: kill", __func__);
+			}
+		}
+	}
 }
 
 static short
@@ -651,7 +679,7 @@ linux_abortsyscall(pid_t pid)
 }
 
 static void
-linux_set_returncode(pid_t pid, struct user_regs_struct* regs, int code)
+linux_write_returncode(pid_t pid, struct user_regs_struct* regs, int code)
 {
 	int res;
 	DFPRINTF((stderr, "%s: setting return code to %d\n", __func__, code));
@@ -700,11 +728,11 @@ linux_policytranslate(int policy, int errnumber, int *result)
  */
 
 static void
-linux_abortsyscall_error(pid_t pid, int error_code)
+linux_set_returncode(pid_t pid, int error_code)
 {
 	struct intercept_pid *icpid;
 	struct linux_data *data;
-	DFPRINTF((stderr, "%s: aborting system call: pid %d error %d\n",
+	DFPRINTF((stderr, "%s: setting return code: pid %d error %d\n",
 		__func__, pid, error_code));
 
 	icpid = intercept_findpid(pid);
@@ -713,6 +741,15 @@ linux_abortsyscall_error(pid_t pid, int error_code)
 	data = icpid->data;
 	data->error_code = error_code;
 	data->flags |= SYSTR_FLAGS_ERRORCODE;
+}
+
+static void
+linux_abortsyscall_error(pid_t pid, int error_code)
+{
+	DFPRINTF((stderr, "%s: aborting system call: pid %d error %d\n",
+		__func__, pid, error_code));
+
+	linux_set_returncode(pid, error_code);
 
 	/* Abort the system call */
 	linux_abortsyscall(pid);
@@ -874,8 +911,8 @@ linux_restcwd(int fd)
 static int
 linux_argument(int off, void *pargs, int argsize, void **pres)
 {
-	DFPRINTF((stderr, "%s: off %d\n", __func__, off));
 	struct user_regs_struct *regs = pargs;
+	DFPRINTF((stderr, "%s: off %d\n", __func__, off));
 	
 	switch (off) {
 	case 0:
@@ -1092,7 +1129,12 @@ linux_rewritewaitpid(pid_t pid, const char *sysname,
 		data->flags |= SYSTR_FLAGS_SAWWAITPID;
 
 		/* We have data to report - weeh */
-		linux_abortsyscall_error(pid, data->waitpid);
+		/*
+		 * Allow the real system call to continue to reap children,
+		 * that got reparented to the process when it died. We are
+		 * still going to rewrite the return value and hope that
+		 * everything goes well.
+		 */
 		return;
 	}
 
@@ -1100,16 +1142,28 @@ linux_rewritewaitpid(pid_t pid, const char *sysname,
 		/* if we have nothing to report, we just return immediately */
 		DFPRINTF((stderr, "%s: pid %d wait4 returning nothing\n",
 			__func__, pid));
-		linux_abortsyscall_error(pid, 0);
+
+		/*
+		 * allow the system call but make sure that it does not
+		 * return anything useful.
+		 */
+		linux_set_returncode(pid, 0);
 		return;
 	}
 
 	data->waitpid = wait_pid;
 	if (!linux_havewaitchildren(icpid, data, wait_pid)) {
+		/* make waitpid return immediately */
+		woptions |= WNOHANG;
+		linux_set_argument(regs, 2, woptions);
+		res = ptrace(PTRACE_SETREGS, pid, NULL, regs);
+		if (res == -1)
+			err(1, "%s: ptrace getregs", __func__);
+
 		/*
 		 * There are no children to wait for -> ECHILD
 		 */
-		linux_abortsyscall_error(pid, -ECHILD);
+		linux_set_returncode(pid, -ECHILD);
 		return;
 	}
 		
@@ -1119,9 +1173,10 @@ linux_rewritewaitpid(pid_t pid, const char *sysname,
 	/* if this thread is a cloner, then we need to mark waiting children */
 	if (data->flags & SYSTR_FLAGS_CLONE_THREAD) {
 		struct intercept_pid *ppid = intercept_findpid(icpid->ppid);
+		struct linux_data *pdata;
 		if (ppid == NULL)
 			errx(1, "%s: intercept_findpid", __func__);
-		struct linux_data *pdata = ppid->data;
+		pdata = ppid->data;
 		pdata->nthreads_waiting++;
 	}
 		
@@ -1154,7 +1209,7 @@ linux_rewritewaitpid_return(pid_t pid, struct linux_data *data, pid_t res_pid, i
 	if (res == -1)
 		err(1, "%s: ptrace getregs: pid %d", __func__, pid);
 
-	linux_set_returncode(pid, &regs, res_pid);
+	linux_write_returncode(pid, &regs, res_pid);
 	data->waitpid = -1;
 
 	/* Stick status */
@@ -1457,7 +1512,7 @@ linux_systemcall(int fd, pid_t pid, struct intercept_pid *icpid)
 
 		/* it's still possible that we got another abort */
 		if (data->flags & SYSTR_FLAGS_ERRORCODE) {
-			linux_set_returncode(pid, regs, data->error_code);
+			linux_write_returncode(pid, regs, data->error_code);
 			data->flags &= ~SYSTR_FLAGS_ERRORCODE;
 			data->error_code = 0;
 		} else if (sysnumber == __NR_execve && !regs->eax) {
@@ -1504,9 +1559,10 @@ linux_resumeparent(struct intercept_pid *icpid)
 	/* let the parent know that we are no longer waiting */
 	if (data->flags & SYSTR_FLAGS_CLONE_THREAD) {
 		struct intercept_pid *ppid = intercept_findpid(icpid->ppid);
+		struct linux_data *pdata;
 		if (ppid == NULL)
 			errx(1, "%s: intercept_findpid", __func__);
-		struct linux_data *pdata = ppid->data;
+		pdata = ppid->data;
 		pdata->nthreads_waiting--;
 	}
 

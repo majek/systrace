@@ -149,8 +149,11 @@ systrace_initcb(void)
  	X(intercept_register_sccb("native", "fcntl", trans_cb, NULL));
  	intercept_register_translation("native", "fcntl", 1, &ic_fcntlcmd);
 
+	/* i386 specific translation */
 	X(intercept_register_sccb("linux", "old_mmap", trans_cb, NULL));
-	intercept_register_translation("linux", "old_mmap", 2, &ic_memprot);
+	intercept_register_translation("linux", "old_mmap", 0,
+	    &ic_linux_memprot);
+
 	X(intercept_register_sccb("linux", "mmap2", trans_cb, NULL));
 	intercept_register_translation("linux", "mmap2", 2, &ic_memprot);
 	X(intercept_register_sccb("linux", "mprotect", trans_cb, NULL));
@@ -168,6 +171,10 @@ systrace_initcb(void)
  	tl = intercept_register_translation("linux", "socketcall", 1, &ic_linux_socket_socktype);
 	systrace_alias_add_trans(alias, tl);
  	tl = intercept_register_translation("linux", "socketcall", 1, &ic_linux_connect_sockaddr);
+	systrace_alias_add_trans(alias, tl);
+ 	tl = intercept_register_translation("linux", "socketcall", 1, &ic_linux_sendto_sockaddr);
+	systrace_alias_add_trans(alias, tl);
+ 	tl = intercept_register_translation("linux", "socketcall", 1, &ic_linux_sendmsg_sockaddr);
 	systrace_alias_add_trans(alias, tl);
  	tl = intercept_register_translation("linux", "socketcall", 1, &ic_linux_bind_sockaddr);
 	systrace_alias_add_trans(alias, tl);

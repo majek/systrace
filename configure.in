@@ -1,9 +1,9 @@
-dnl $Id: configure.in,v 1.24 2006/04/08 20:44:11 provos Exp $
+dnl $Id: configure.in,v 1.29 2006/04/24 05:19:40 provos Exp $
 AC_INIT(systrace.h)
 
 AC_CANONICAL_SYSTEM
 
-AM_INIT_AUTOMAKE(systrace, 1.6c)
+AM_INIT_AUTOMAKE(systrace, 1.6d)
 AM_CONFIG_HEADER(config.h)
 
 AC_PROG_MAKE_SET
@@ -21,7 +21,7 @@ AC_HEADER_STDC
 AC_HEADER_SYS_WAIT
 
 dnl XXX sys/{queue,tree}.h ?
-AC_CHECK_HEADERS(sys/ioctl.h sys/time.h unistd.h poll.h sched.h linux/systrace.h linux/user.h asm/user.h)
+AC_CHECK_HEADERS(sys/ioctl.h sys/time.h unistd.h poll.h sched.h linux/sched.h linux/systrace.h linux/user.h asm/user.h sys/prctl.h libgen.h sched.h)
 
 AC_DNET_SOCKADDR_SA_LEN
 
@@ -86,7 +86,7 @@ AC_CHECK_TYPE(socklen_t, unsigned int)
 dnl Checks for library functions.
 AC_PROG_GCC_TRADITIONAL
 AC_TYPE_SIGNAL
-AC_CHECK_FUNCS(select poll socket chflags)
+AC_CHECK_FUNCS(select poll socket chflags prctl)
 AC_REPLACE_FUNCS(strlcpy strlcat basename dirname setproctitle)
 
 if test "x$ac_cv_func_basename" = "xyes"; then

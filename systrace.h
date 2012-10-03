@@ -168,7 +168,7 @@ struct filterq *systrace_policyflq(struct policy *, const char *, const char *);
 
 int systrace_error_translate(char *);
 
-#define SYSTRACE_MAXALIAS	5
+#define SYSTRACE_MAXALIAS	10
 
 struct systrace_alias {
 	SPLAY_ENTRY(systrace_alias) node;
@@ -251,6 +251,7 @@ extern struct intercept_translate ic_pidname;
 extern struct intercept_translate ic_signame;
 extern struct intercept_translate ic_fcntlcmd;
 extern struct intercept_translate ic_memprot;
+extern struct intercept_translate ic_linux_memprot;
 extern struct intercept_translate ic_fileflags;
 
 extern struct intercept_translate ic_linux_oflags;

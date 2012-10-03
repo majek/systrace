@@ -66,6 +66,9 @@ systrace_initcb(void)
 	alias = systrace_new_alias("netbsd", "open", "netbsd", "fswrite");
 	systrace_alias_add_trans(alias, tl);
 
+	X(intercept_register_sccb("netbsd", "sendmsg", trans_cb, NULL));
+	intercept_register_translation("netbsd", "sendmsg", 1,
+	    &ic_translate_sendmsg);
 	X(intercept_register_sccb("netbsd", "connect", trans_cb, NULL));
 	intercept_register_translation("netbsd", "connect", 1,
 	    &ic_translate_connect);
@@ -187,6 +190,19 @@ systrace_initcb(void)
 	intercept_register_translation("netbsd", "mmap", 2, &ic_memprot);
 	X(intercept_register_sccb("netbsd", "mprotect", trans_cb, NULL));
 	intercept_register_translation("netbsd", "mprotect", 2, &ic_memprot);
+	
+	/* __stat30 [fsread] */
+	X(intercept_register_sccb("netbsd", "__stat30", trans_cb, NULL));
+	tl = intercept_register_transfn("netbsd", "__stat30", 0);
+	alias = systrace_new_alias("netbsd", "__stat30", "netbsd", "fsread");
+	systrace_alias_add_trans(alias, tl);
+	
+	/* __lstat30 [fsread] */
+	X(intercept_register_sccb("netbsd", "__lstat30", trans_cb, NULL));
+	tl = intercept_register_translation("netbsd", "__lstat30", 0,
+	    &ic_translate_unlinkname);
+	alias = systrace_new_alias("netbsd", "__lstat30", "netbsd", "fsread");
+	systrace_alias_add_trans(alias, tl);
 #else
 	X(intercept_register_gencb(gen_cb, NULL));
 	X(intercept_register_sccb("native", "open", trans_cb, NULL));
@@ -195,6 +211,9 @@ systrace_initcb(void)
 	alias = systrace_new_alias("native", "open", "native", "fswrite");
 	systrace_alias_add_trans(alias, tl);
 
+	X(intercept_register_sccb("native", "sendmsg", trans_cb, NULL));
+	intercept_register_translation("native", "sendmsg", 1,
+	    &ic_translate_sendmsg);
 	X(intercept_register_sccb("native", "connect", trans_cb, NULL));
 	intercept_register_translation("native", "connect", 1,
 	    &ic_translate_connect);

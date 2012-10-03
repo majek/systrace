@@ -83,7 +83,8 @@ int userpolicy = 1;		 /* Permit user defined policies */
 int noalias = 0;		 /* Do not do system call aliasing */
 int iamroot = 0;		 /* Set if we are running as root */
 int cradle = 0;			 /* Set if we are running in cradle mode */
-int logstderr = 0;		/* Log to STDERR instead of syslog */
+int logtofile = 0;		 /* Log to file instead of syslog */
+FILE *logfile;			 /* default logfile to send to if enabled */
 char cwd[MAXPATHLEN];		 /* Current working directory */
 char home[MAXPATHLEN];		 /* Home directory of user */
 char username[LOGIN_NAME_MAX];	 /* Username: predicate match and expansion */
@@ -471,9 +472,9 @@ log_msg(int priority, const char *fmt, ...)
 
 	va_start(ap, fmt);
 
-	if (logstderr) {
+	if (logtofile) {
 		vsnprintf(buf, sizeof(buf), fmt, ap);
-		fprintf(stderr, "%s: %s\n", __progname, buf);
+		fprintf(logfile, "%s: %s\n", __progname, buf);
 	} else
 		vsyslog(priority, fmt, ap);
 
@@ -665,8 +666,11 @@ main(int argc, char **argv)
 	uid_t cr_uid;
 	gid_t cr_gid;
 
-	while ((c = getopt(argc, argv, "c:aAeituUCd:g:f:p:")) != -1) {
+	while ((c = getopt(argc, argv, "Vc:aAeituUCE:d:g:f:p:")) != -1) {
 		switch (c) {
+		case 'V':
+			fprintf(stderr, "%s V%s\n", argv[0], VERSION);
+			exit(0);
 		case 'c':
 			setcredentials = 1;
 			if (get_uid_gid(optarg, &cr_uid, &cr_gid) == -1)
@@ -681,7 +685,15 @@ main(int argc, char **argv)
 			policypath = optarg;
 			break;
 		case 'e':
-			logstderr = 1;
+			logtofile = 1;
+			logfile = stderr;
+			break;
+		case 'E':
+			logtofile = 1;
+			logfile = fopen(optarg, "a");
+			if (logfile == NULL)
+				err(1, "Cannot open \"%s\" for writing",
+				    optarg);
 			break;
 		case 'A':
 			if (automatic)
@@ -734,6 +746,10 @@ main(int argc, char **argv)
 		fprintf(stderr, "Need to be root to change credentials.\n");
 		usage();
 	}
+
+	/* Initalize libevent but without kqueue because of systrace fd */
+	setenv("EVENT_NOKQUEUE", "yes", 0);
+	event_init();
 
 	/* Local initialization */
 	systrace_initalias();
@@ -799,10 +815,6 @@ main(int argc, char **argv)
 			requestor_start(guipath, 0);
 
 	}
-
-	/* Initalize libevent but without kqueue because of systrace fd */
-	setenv("EVENT_NOKQUEUE", "yes", 0);
-	event_init();
 
 	/* Register read events */
 	event_set(&ev_read, trfd, EV_READ|EV_PERSIST, systrace_read, NULL);

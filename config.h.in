@@ -23,6 +23,12 @@
 /* Define to 1 if you have the <inttypes.h> header file. */
 #undef HAVE_INTTYPES_H
 
+/* Define to 1 if you have the <libgen.h> header file. */
+#undef HAVE_LIBGEN_H
+
+/* Define to 1 if you have the <linux/sched.h> header file. */
+#undef HAVE_LINUX_SCHED_H
+
 /* Define to 1 if you have the <linux/systrace.h> header file. */
 #undef HAVE_LINUX_SYSTRACE_H
 
@@ -40,6 +46,9 @@
 
 /* Define to 1 if you have the <poll.h> header file. */
 #undef HAVE_POLL_H
+
+/* Define to 1 if you have the `prctl' function. */
+#undef HAVE_PRCTL
 
 /* Define to 1 if you have the <sched.h> header file. */
 #undef HAVE_SCHED_H
@@ -82,6 +91,9 @@
 
 /* Define to 1 if you have the <sys/ioctl.h> header file. */
 #undef HAVE_SYS_IOCTL_H
+
+/* Define to 1 if you have the <sys/prctl.h> header file. */
+#undef HAVE_SYS_PRCTL_H
 
 /* Define to 1 if you have the <sys/stat.h> header file. */
 #undef HAVE_SYS_STAT_H

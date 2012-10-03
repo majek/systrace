@@ -188,6 +188,7 @@ extern struct intercept_translate ic_translate_filename;
 extern struct intercept_translate ic_translate_linkname;
 extern struct intercept_translate ic_translate_unlinkname;
 extern struct intercept_translate ic_translate_connect;
+extern struct intercept_translate ic_translate_sendmsg;
 
 void intercept_freepid(pid_t);
 struct intercept_pid *intercept_findpid(pid_t);

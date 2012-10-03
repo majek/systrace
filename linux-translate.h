@@ -35,6 +35,8 @@
 extern struct intercept_translate ic_linux_socket_sockdom;
 extern struct intercept_translate ic_linux_socket_socktype;
 extern struct intercept_translate ic_linux_connect_sockaddr;
+extern struct intercept_translate ic_linux_sendto_sockaddr;
+extern struct intercept_translate ic_linux_sendmsg_sockaddr;
 extern struct intercept_translate ic_linux_socketcall_catchall;
 extern struct intercept_translate ic_linux_bind_sockaddr;
 

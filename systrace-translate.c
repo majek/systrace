@@ -279,11 +279,20 @@ print_pidname(char *buf, size_t buflen, struct intercept_translate *tl)
 	struct intercept_pid *icpid;
 	pid_t pid = (intptr_t)tl->trans_addr;
 
-	if (pid != 0) {
+	if (pid > 0) {
 		icpid = intercept_findpid(pid);
 		strlcpy(buf, icpid != NULL ? icpid->name : "<unknown>", buflen);
-	} else
+	} else if (pid == 0) {
 		strlcpy(buf, "<own process group>", buflen);
+	} else if (pid == -1) {
+		strlcpy(buf, "<every process: -1>", buflen);
+	} else {
+		/* pid is negative but not -1 - trying to signal pgroup */
+		pid = -pid;
+		icpid = intercept_findpid(pid);
+		strlcpy(buf, "pg:", buflen);
+		strlcat(buf, icpid != NULL ? icpid->name : "unknown", buflen);
+	}
 
 	return (0);
 }
@@ -441,6 +450,32 @@ print_fcntlcmd(char *buf, size_t buflen, struct intercept_translate *tl)
 	return (0);
 }
 
+struct linux_i386_mmap_arg_struct {
+	unsigned long addr;
+	unsigned long len;
+	unsigned long prot;
+	unsigned long flags;
+	unsigned long fd;
+	unsigned long offset;
+};
+
+static int
+get_linux_memprot(struct intercept_translate *trans, int fd, pid_t pid,
+    void *addr)
+{
+	struct linux_i386_mmap_arg_struct arg;
+	int len = sizeof(arg);
+	extern struct intercept_system intercept;
+
+	if (intercept.io(fd, pid, INTERCEPT_READ, addr,
+		(void *)&arg, len) == -1)
+		return (-1);
+
+	trans->trans_addr = (void *)arg.prot;
+
+	return (0);
+}
+
 static int
 print_memprot(char *buf, size_t buflen, struct intercept_translate *tl)
 {
@@ -475,6 +510,20 @@ print_memprot(char *buf, size_t buflen, struct intercept_translate *tl)
 			continue;
 		}
 
+#ifdef PROT_GROWSDOWN
+		if (prot & PROT_GROWSDOWN) {
+			strlcat(buf, "PROT_GROWSDOWN", buflen);
+			prot &= ~PROT_GROWSDOWN;
+			continue;
+		}
+#endif
+#ifdef PROT_GROWSUP
+		if (prot & PROT_GROWSUP) {
+			strlcat(buf, "PROT_GROWSUP", buflen);
+			prot &= ~PROT_GROWSUP;
+			continue;
+		}
+#endif
 		if (prot) {
 			snprintf(lbuf, sizeof(lbuf), "<unknown:0x%x>", prot);
 			strlcat(buf, lbuf, buflen);
@@ -673,6 +722,12 @@ struct intercept_translate ic_memprot = {
 	"prot",
 	NULL, print_memprot,
 };
+
+struct intercept_translate ic_linux_memprot = {
+	"prot",
+	get_linux_memprot, print_memprot,
+};
+
 #ifdef HAVE_CHFLAGS
 struct intercept_translate ic_fileflags = {
 	"flags",

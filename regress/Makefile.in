@@ -390,6 +390,7 @@ test_stat:
 	@mkdir ./tmp || echo "./tmp already there"
 	@echo -en "stat:\t"
 	@../systrace -At -d ./tmp ./stat || echo "FAILURE"
+	@sleep 1
 	@rm -rf ./tmp
 
 clean:

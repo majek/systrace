@@ -44,6 +44,10 @@
 #include <sys/poll.h>
 #endif /* __linux__ */
 
+#ifdef HAVE_SYS_PRCTL_H
+#include <sys/prctl.h>
+#endif
+
 #include <limits.h>
 #include <signal.h>
 #include <stdlib.h>
@@ -309,6 +313,15 @@ intercept_run(int bg, int fd, uid_t uid, gid_t gid,
 	 * process.  Everything just hangs.
 	 */
 	bg = 0;
+#ifdef HAVE_PRCTL
+	if (cpid == 0) {
+		/*
+		 * We are running in the child and want to get killed
+		 * if the parent systrace process dies.
+		 */
+		prctl(PR_SET_PDEATHSIG, SIGKILL);
+	}
+#endif
 #endif
 	
 	/*

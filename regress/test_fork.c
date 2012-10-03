@@ -129,7 +129,13 @@ int childExecution(void *arg)
 	
 	sleep(1);
 
-	return (1);
+	if (arg == NULL) {
+		sleep(10);
+		return (1);
+	}
+
+	printf("I am exiting all of us.\n");
+	exit(1);
 }
 
 #define STACK_SIZE 4096
@@ -144,7 +150,8 @@ int masterExecution(void *arg)
 	
 	for (i = 0; i < 3; ++i) {
 		pid[i] = clone(childExecution, stacks[i] + STACK_SIZE,
-		    SIGCHLD | CLONE_THREAD | CLONE_SIGHAND | CLONE_VM, NULL);
+		    SIGCHLD | CLONE_THREAD | CLONE_SIGHAND | CLONE_VM,
+		    i == 0 ? (void *)0xdeadbeef : NULL);
 		if (pid[i] == -1)
 			err(1, "clone failed");
 	}
@@ -174,6 +181,8 @@ void Test4(void)
 
 	wpid = waitpid(-1, &status, __WCLONE | __WALL);
 	assert(wpid == -1);
+
+	printf("Exiting.\n");
 }
 #endif
 

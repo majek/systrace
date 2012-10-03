@@ -39,7 +39,8 @@
 .Sh SYNOPSIS
 .Nm systrace
 .Bk -words
-.Op Fl aAituUC
+.Op Fl aAituUCVe
+.Op Fl E Ar logfile
 .Op Fl d Ar policydir
 .Op Fl g Ar gui
 .Op Fl f Ar file
@@ -123,6 +124,12 @@ This may be useful, for example, in scenarios where
 .Nm
 is being heavily used.
 If a cradle server is not running, one is launched.
+.It Fl V
+Prints the version number of
+.Nm .
+.It Fl E Ar logfile
+Logs all policy violations or specifically logged system calls to
+.Ar logfile .
 .It Fl d Ar policydir
 Specifies an alternative location for the user's directory from
 which policies are loaded and to which changed policies are stored.
@@ -143,6 +150,9 @@ The policies specified in
 are added to the policies that
 .Nm
 knows about.
+The dirname in the policy make contain a "*" to match any possible pathname.
+The wildcard is removed from the policy database the first time that
+a filename matches.
 .It Fl p Ar pid
 Specifies the pid of a process that
 .Nm
