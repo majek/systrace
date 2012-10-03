@@ -146,6 +146,11 @@ systrace_initcb(void)
 	intercept_register_translink("linux", "chmod", 0);
 	intercept_register_translation("linux", "chmod", 1, &ic_modeflags);
 
+	X(intercept_register_sccb("linux", "mknod", trans_cb, NULL));
+	intercept_register_translation("linux", "mknod", 0,
+	    &ic_translate_unlinkname);
+	intercept_register_translation("linux", "mknod", 1, &ic_modeflags);
+
 	X(intercept_register_sccb("linux", "socketcall", trans_cb, NULL));
  	tl = intercept_register_translation("linux", "socketcall", 1, &ic_linux_socket_sockdom);
 	alias = systrace_new_alias("linux", "socketcall", "linux", "_socketcall");

@@ -111,7 +111,7 @@ void Test3(void)
 	while ((wpid = waitpid(0, &status, WNOHANG)) == 0)
 		;
 
-	printf("Got wpid %d status %d\n", wpid, status);
+	printf("Got wpid %d status %d, wanted pid %d\n", wpid, status, pid);
 
 	assert(wpid == pid);
 	assert(WEXITSTATUS(status) == 1);

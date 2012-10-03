@@ -504,6 +504,7 @@ parse_newsymbol(char *type, int typeoff, char *data)
 		}
 		if (node->filterdata == NULL) {
 			yyerror("strdup");
+			free(node);
 			return (NULL);
 		}
 		node->filterlen = strlen(node->filterdata) + 1;

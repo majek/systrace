@@ -107,12 +107,12 @@ systrace_parameters(void)
 	iamroot = getuid() == 0;
 
 	/* Find out current username. */
-	if ((pw = getpwuid(uid)) == NULL)
+	if ((pw = getpwuid(uid)) == NULL) {
 		snprintf(username, sizeof(username), "uid %u", uid);
-	else
+	} else {
 		strlcpy(username, pw->pw_name, sizeof(username));
-
-	strlcpy(home, pw->pw_dir, sizeof(home));
+		strlcpy(home, pw->pw_dir, sizeof(home));
+	}
 
 	/* Determine current working directory for filtering */
 	if (getcwd(cwd, sizeof(cwd)) == NULL)

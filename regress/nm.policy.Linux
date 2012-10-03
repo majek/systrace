@@ -20,7 +20,7 @@ Policy: /usr/bin/nm, Emulation: linux
 	linux-fsread: filename eq "/proc/meminfo" then permit
 	linux-write: permit
 	linux-ni_syscall-43: true then permit
-	linux-ni_syscall-1exit: permit
+	linux-exit: permit
 	linux-ni_syscall-34: permit
 	linux-mprotect: permit
 	linux-set_thread_area: permit

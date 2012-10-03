@@ -17,7 +17,7 @@ Policy: /usr/bin/uniq, Emulation: linux
 	linux-write: permit
 	linux-fsread: filename eq "/usr/lib/gconv/gconv-modules.cache" then permit
 	linux-ni_syscall-43: true then permit
-	linux-ni_syscall-1exit: permit
+	linux-exit: permit
 	linux-fsread: filename eq "/etc/ld.so.nohwcap" then permit
 	linux-fsread: filename match "/lib/tls/*" then permit
 	linux-mprotect: permit

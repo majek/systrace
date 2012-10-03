@@ -194,7 +194,8 @@ struct intercept_pid *intercept_findpid(pid_t);
 struct intercept_pid *intercept_getpid(pid_t);
 int intercept_existpids(void);
 
-void intercept_foreachpid(void (*apply)(struct intercept_pid *));
+void intercept_foreachpid(void (*apply)(struct intercept_pid *, void *),
+    void *arg);
 
 char *intercept_get_string(int, pid_t, void *);
 char *normalize_filename(int, pid_t, char *, int);

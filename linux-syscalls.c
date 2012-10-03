@@ -38,14 +38,19 @@ typedef u_int32_t u32;
 
 #include <asm/unistd.h>
 
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif /* HAVE_CONFIG_H */
+
 #include <linux/limits.h>
-#ifndef NR_syscalls
-#include <linux/sys.h>
-#endif
 #include <linux/types.h>
 #include <linux/systrace.h>
 #include <sys/queue.h>
 #include <sys/tree.h>
+
+#ifndef NR_syscalls
+#define NR_syscalls 512
+#endif
 
 #include <limits.h>
 #include <err.h>
@@ -54,10 +59,6 @@ typedef u_int32_t u32;
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
-
-#ifdef HAVE_CONFIG_H
-#include "config.h"
-#endif /* HAVE_CONFIG_H */
 
 #include "intercept.h"
 #include "linux_syscalls.c"
@@ -152,15 +153,6 @@ linux_clonepid(struct intercept_pid *opid, struct intercept_pid *npid)
 {
 }
 
-static const char *
-linux_syscall_name(pid_t pidnr, int number)
-{
-	if (number < 0 || number >= NR_syscalls)
-		return (NULL);
-
-	return (linux_syscallnames[number - 1]); /* XXX track this offbyone down */
-}
-
 static int
 linux_syscall_number(const char *emulation, const char *name)
 {
@@ -168,7 +160,7 @@ linux_syscall_number(const char *emulation, const char *name)
 
 	for (i = 0; i < NR_syscalls; i++)
 		if (!strcmp(name, linux_syscallnames[i]))
-			return (i + 1);	   /* XXX */
+			return i;
 
 	return (-1);
 }

@@ -86,6 +86,13 @@ systrace_initcb(void)
 	    &ic_translate_unlinkname);
 	alias = systrace_new_alias("netbsd", "__lstat13", "netbsd", "fsread");
 	systrace_alias_add_trans(alias, tl);
+	X(intercept_register_sccb("netbsd", "mkfifo", trans_cb, NULL));
+	tl = intercept_register_transfn("netbsd", "mkfifo", 0);
+	intercept_register_translation("netbsd", "mkfifo", 1, &ic_modeflags);
+	X(intercept_register_sccb("netbsd", "mknod", trans_cb, NULL));
+	intercept_register_translation("netbsd", "mknod", 0,
+	    &ic_translate_unlinkname);
+	intercept_register_translation("netbsd", "mknod", 1, &ic_modeflags);
 
 	X(intercept_register_sccb("netbsd", "unlink", trans_cb, NULL));
 	tl = intercept_register_translation("netbsd", "unlink", 0,
@@ -210,6 +217,14 @@ systrace_initcb(void)
 	    &ic_translate_unlinkname);
 	alias = systrace_new_alias("native", "unlink", "native", "fswrite");
 	systrace_alias_add_trans(alias, tl);
+
+	X(intercept_register_sccb("native", "mkfifo", trans_cb, NULL));
+	tl = intercept_register_transfn("native", "mkfifo", 0);
+	intercept_register_translation("native", "mkfifo", 1, &ic_modeflags);
+	X(intercept_register_sccb("native", "mknod", trans_cb, NULL));
+	intercept_register_translation("native", "mknod", 0,
+	    &ic_translate_unlinkname);
+	intercept_register_translation("native", "mknod", 1, &ic_modeflags);
 
 	X(intercept_register_sccb("native", "chown", trans_cb, NULL));
 	intercept_register_transfn("native", "chown", 0);

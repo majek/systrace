@@ -2,7 +2,7 @@ AUTOMAKE_OPTIONS = foreign no-dependencies
 
 DISTCLEANFILES = *~
 
-bin_PROGRAMS = stat fork
+noinst_PROGRAMS = stat fork
 
 stat_SOURCES = test_stat.c
 fork_SOURCES = test_fork.c

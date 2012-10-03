@@ -529,7 +529,7 @@ systrace_readtemplate(char *filename, struct policy *policy,
 		}
 
 		if (policy == NULL)
-			return (template);
+			goto out;
 
 		if (systrace_policyprocess(policy, p) == -1)
 			goto error;

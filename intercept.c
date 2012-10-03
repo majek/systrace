@@ -456,12 +456,12 @@ intercept_getpid(pid_t pid)
 }
 
 void
-intercept_foreachpid(void (*apply)(struct intercept_pid *))
+intercept_foreachpid(void (*apply)(struct intercept_pid *, void *), void *arg)
 {
         struct intercept_pid *tmp;
 
 	SPLAY_FOREACH(tmp, pidtree, &pids)
-                (*apply)(tmp);
+	    (*apply)(tmp, arg);
 }
 
 int

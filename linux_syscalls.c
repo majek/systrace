@@ -9,7 +9,7 @@
  */
 
 char *linux_syscallnames[] = {
-	"ni_syscall-1"
+	"ni_syscall-1",
 	"exit",
 	"fork",
 	"read",
@@ -309,4 +309,32 @@ char *linux_syscallnames[] = {
 	"ni_syscall-39",
 	"ni_syscall-40",
 	"ni_syscall-41",
+	NULL			 /* sentinel */
 };
+
+#if !defined(DFPRINTF)
+#define DFPRINTF(x)
+#endif
+
+static const char *
+linux_syscall_name(pid_t pidnr, int number)
+{
+	static int nr_syscalls = -1;
+	/*
+	 * Compute the number of available system calls in our translation
+	 * table.  This might differ from kernel to kernel.
+	 */
+	if (nr_syscalls == -1) {
+		for (nr_syscalls = 0; nr_syscalls < NR_syscalls; nr_syscalls++)
+			if (linux_syscallnames[nr_syscalls] == NULL)
+				break;
+	}
+	if (number < 0 || number >= nr_syscalls) {
+		DFPRINTF((stderr, "%s: pid %d Bad number: %d\n",
+			__func__, pidnr, number));
+		return (NULL);
+	}
+
+	return (linux_syscallnames[number]);
+}
+

@@ -1,8 +1,109 @@
-#ifndef BISON_PARSE_H
-# define BISON_PARSE_H
+/* A Bison parser, made by GNU Bison 2.0.  */
 
-#ifndef YYSTYPE
-typedef union {
+/* Skeleton parser for Yacc-like parsing with Bison,
+   Copyright (C) 1984, 1989, 1990, 2000, 2001, 2002, 2003, 2004 Free Software Foundation, Inc.
+
+   This program is free software; you can redistribute it and/or modify
+   it under the terms of the GNU General Public License as published by
+   the Free Software Foundation; either version 2, or (at your option)
+   any later version.
+
+   This program is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+   GNU General Public License for more details.
+
+   You should have received a copy of the GNU General Public License
+   along with this program; if not, write to the Free Software
+   Foundation, Inc., 59 Temple Place - Suite 330,
+   Boston, MA 02111-1307, USA.  */
+
+/* As a special exception, when this file is copied by Bison into a
+   Bison output file, you may use that output file without restriction.
+   This special exception was added by the Free Software Foundation
+   in version 1.24 of Bison.  */
+
+/* Tokens.  */
+#ifndef YYTOKENTYPE
+# define YYTOKENTYPE
+   /* Put the tokens into the symbol table, so that GDB and other debuggers
+      know about them.  */
+   enum yytokentype {
+     AND = 258,
+     OR = 259,
+     NOT = 260,
+     LBRACE = 261,
+     RBRACE = 262,
+     LSQBRACE = 263,
+     RSQBRACE = 264,
+     THEN = 265,
+     MATCH = 266,
+     PERMIT = 267,
+     DENY = 268,
+     ASK = 269,
+     EQ = 270,
+     NEQ = 271,
+     TRUE = 272,
+     SUB = 273,
+     NSUB = 274,
+     INPATH = 275,
+     LOG = 276,
+     COMMA = 277,
+     IF = 278,
+     USER = 279,
+     GROUP = 280,
+     EQUAL = 281,
+     NEQUAL = 282,
+     AS = 283,
+     COLON = 284,
+     RE = 285,
+     LESSER = 286,
+     GREATER = 287,
+     STRING = 288,
+     CMDSTRING = 289,
+     NUMBER = 290
+   };
+#endif
+#define AND 258
+#define OR 259
+#define NOT 260
+#define LBRACE 261
+#define RBRACE 262
+#define LSQBRACE 263
+#define RSQBRACE 264
+#define THEN 265
+#define MATCH 266
+#define PERMIT 267
+#define DENY 268
+#define ASK 269
+#define EQ 270
+#define NEQ 271
+#define TRUE 272
+#define SUB 273
+#define NSUB 274
+#define INPATH 275
+#define LOG 276
+#define COMMA 277
+#define IF 278
+#define USER 279
+#define GROUP 280
+#define EQUAL 281
+#define NEQUAL 282
+#define AS 283
+#define COLON 284
+#define RE 285
+#define LESSER 286
+#define GREATER 287
+#define STRING 288
+#define CMDSTRING 289
+#define NUMBER 290
+
+
+
+
+#if ! defined (YYSTYPE) && ! defined (YYSTYPE_IS_DECLARED)
+#line 91 "parse.y"
+typedef union YYSTYPE {
 	int number;
 	char *string;
 	short action;
@@ -11,44 +112,15 @@ typedef union {
 	struct elevate elevate;
 	uid_t uid;
 	gid_t gid;
-} yystype;
-# define YYSTYPE yystype
+} YYSTYPE;
+/* Line 1318 of yacc.c.  */
+#line 118 "parse.h"
+# define yystype YYSTYPE /* obsolescent; will be withdrawn */
+# define YYSTYPE_IS_DECLARED 1
+# define YYSTYPE_IS_TRIVIAL 1
 #endif
-# define	AND	257
-# define	OR	258
-# define	NOT	259
-# define	LBRACE	260
-# define	RBRACE	261
-# define	LSQBRACE	262
-# define	RSQBRACE	263
-# define	THEN	264
-# define	MATCH	265
-# define	PERMIT	266
-# define	DENY	267
-# define	ASK	268
-# define	EQ	269
-# define	NEQ	270
-# define	TRUE	271
-# define	SUB	272
-# define	NSUB	273
-# define	INPATH	274
-# define	LOG	275
-# define	COMMA	276
-# define	IF	277
-# define	USER	278
-# define	GROUP	279
-# define	EQUAL	280
-# define	NEQUAL	281
-# define	AS	282
-# define	COLON	283
-# define	RE	284
-# define	LESSER	285
-# define	GREATER	286
-# define	STRING	287
-# define	CMDSTRING	288
-# define	NUMBER	289
-
 
 extern YYSTYPE yylval;
 
-#endif /* not BISON_PARSE_H */
+
+

@@ -8,6 +8,9 @@
 #undef in_addr_t
 
 
+/* Define to 1 if you have the <asm/user.h> header file. */
+#undef HAVE_ASM_USER_H
+
 /* Define to 1 if you have the `basename' function. */
 #undef HAVE_BASENAME
 
@@ -19,6 +22,9 @@
 
 /* Define to 1 if you have the <linux/systrace.h> header file. */
 #undef HAVE_LINUX_SYSTRACE_H
+
+/* Define to 1 if you have the <linux/user.h> header file. */
+#undef HAVE_LINUX_USER_H
 
 /* Define to 1 if you have the <memory.h> header file. */
 #undef HAVE_MEMORY_H
