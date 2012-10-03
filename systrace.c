@@ -783,7 +783,7 @@ main(int argc, char **argv)
 	if (signal(SIGCHLD, child_handler) == SIG_ERR)
 		err(1, "signal");
 #else
-	if (signal(SIGCHLD, SIG_IGN) == SIG_ERR)
+	if (signal(SIGCHLD, SIG_DFL) == SIG_ERR)
 		err(1, "signal");
 #endif	
 

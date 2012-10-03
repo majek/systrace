@@ -278,12 +278,8 @@ print_pidname(char *buf, size_t buflen, struct intercept_translate *tl)
 	pid_t pid = (intptr_t)tl->trans_addr;
 
 	if (pid != 0) {
-		icpid = intercept_getpid(pid);
-		strlcpy(buf, icpid->name != NULL ? icpid->name : "<unknown>",
-                        buflen);
-
-		if (icpid->name == NULL)
-			intercept_freepid(pid);
+		icpid = intercept_findpid(pid);
+		strlcpy(buf, icpid != NULL ? icpid->name : "<unknown>", buflen);
 	} else
 		strlcpy(buf, "<own process group>", buflen);
 
