@@ -3,7 +3,7 @@ AC_INIT(systrace.h)
 
 AC_CANONICAL_SYSTEM
 
-AM_INIT_AUTOMAKE(systrace, 1.6d)
+AM_INIT_AUTOMAKE(systrace, 1.6e)
 AM_CONFIG_HEADER(config.h)
 
 AC_PROG_MAKE_SET

@@ -1,0 +1,3 @@
+Changes since last release:
+ - potential escape of socket aliases and double free; from Tavis Ormandy
+ - fixed a problem with fork and ptrace; from Tavis Ormandy; CVE-2007-4773

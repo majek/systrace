@@ -306,13 +306,14 @@ ic_get_msghdr(struct intercept_translate *trans, int fd, pid_t pid,
 		(void *)&msg, len) == -1)
 		return (-1);
 
-	if (msg.msg_name == NULL) {
+	len = msg.msg_namelen;
+	if (msg.msg_name == NULL || len <= 0 || len > 2048) {
 		trans->trans_data = NULL;
 		trans->trans_size = 0;
 		return (0);
 	}
 
-	trans->trans_size = msg.msg_namelen;
+	trans->trans_size = len;
 	trans->trans_data = malloc(len);
 	if (trans->trans_data == NULL)
 		return (-1);

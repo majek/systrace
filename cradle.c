@@ -67,7 +67,6 @@ static void  gensig_cb(int, short, void *);
 static FILE *ui_fl = NULL;
 static struct event ui_ev, sigterm_ev, sigint_ev;
 static char buffer[4096];
-static char title[4096];
 static char *xuipath, *xpath;
 static volatile int got_sigusr1 = 0;
 
@@ -102,6 +101,7 @@ static int
 mkunserv(char *path)
 {
 	int s;
+	mode_t old_umask;
 	struct sockaddr_un sun;
 
 	if ((s = socket(AF_UNIX, SOCK_STREAM, 0)) == -1)
@@ -114,8 +114,10 @@ mkunserv(char *path)
 	    sizeof (sun.sun_path))
 		errx(1, "Path too long: %s", path);
 
+	old_umask = umask(S_IRUSR | S_IWUSR);
 	if (bind(s, (struct sockaddr *)&sun, sizeof(sun)) == -1)
 		err(1, "bind()");
+	umask(old_umask);
 
 	if (chmod(path, S_IRUSR | S_IWUSR) == -1)
 		err(1, "chmod()");
@@ -172,8 +174,7 @@ cradle_server(char *path, char *uipath, char *guipath)
 	}
 
 	setsid();
-	snprintf(title, sizeof(title), "cradle server for UID %d", getuid());
-	setproctitle(title);
+	setproctitle("cradle server for UID %d", getuid());
 
 	TAILQ_INIT(&clientq);
 

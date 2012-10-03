@@ -127,11 +127,11 @@ pidcompare(struct intercept_pid *a, struct intercept_pid *b)
 	return (-1);
 }
 
-SPLAY_PROTOTYPE(sctree, intercept_syscall, node, sccompare);
-SPLAY_GENERATE(sctree, intercept_syscall, node, sccompare);
+SPLAY_PROTOTYPE(sctree, intercept_syscall, node, sccompare)
+SPLAY_GENERATE(sctree, intercept_syscall, node, sccompare)
 
-SPLAY_PROTOTYPE(pidtree, intercept_pid, next, pidcompare);
-SPLAY_GENERATE(pidtree, intercept_pid, next, pidcompare);
+SPLAY_PROTOTYPE(pidtree, intercept_pid, next, pidcompare)
+SPLAY_GENERATE(pidtree, intercept_pid, next, pidcompare)
 
 extern struct intercept_system intercept;
 int ic_abort;
@@ -719,12 +719,12 @@ normalize_filename(int fd, pid_t pid, char *name, int userp)
 
 	if (havecwd && name[0] != '/') {
 		if (strlcat(cwd, "/", sizeof(cwd)) >= sizeof(cwd))
-			goto error;
+			return (NULL);
 		if (strlcat(cwd, name, sizeof(cwd)) >= sizeof(cwd))
-			goto error;
+			return (NULL);
 	} else {
 		if (strlcpy(cwd, name, sizeof(cwd)) >= sizeof(cwd))
-			goto error;
+			return (NULL);
 	}
 
 	if (userp != ICLINK_NONE) {
@@ -907,9 +907,13 @@ intercept_syscall_result(int fd, pid_t pid, u_int16_t seqnr, int policynr,
 		goto out;
 
 	icpid = intercept_getpid(pid);
-	if (!strcmp("execve", name))
+	if (!strcmp("execve", name)) {
 		intercept_newimage(fd, pid, policynr,
 		    emulation, icpid->newname, icpid);
+		/* we might have detached by now */
+		if (intercept_findpid(pid) == NULL)
+			return;
+	}
 
  out:
 	/* Resume execution of the process */
@@ -927,6 +931,11 @@ intercept_newimage(int fd, pid_t pid, int policynr,
 		free(icpid->name);
 	if ((icpid->name = strdup(newname)) == NULL)
 		err(1, "%s:%d: strdup", __func__, __LINE__);
+
+	if (icpid->newname != NULL) {
+		free(icpid->newname);
+		icpid->newname = NULL;
+	}
 
 	if (intercept_newimagecb != NULL)
 		(*intercept_newimagecb)(fd, pid, policynr, emulation,

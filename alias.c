@@ -78,11 +78,11 @@ revcompare(struct systrace_revalias *a, struct systrace_revalias *b)
 	return (strcmp(a->name, b->name));
 }
 
-SPLAY_PROTOTYPE(alitr, systrace_alias, node, aliascompare);
-SPLAY_GENERATE(alitr, systrace_alias, node, aliascompare);
+SPLAY_PROTOTYPE(alitr, systrace_alias, node, aliascompare)
+SPLAY_GENERATE(alitr, systrace_alias, node, aliascompare)
 
-SPLAY_PROTOTYPE(revtr, systrace_revalias, node, revcompare);
-SPLAY_GENERATE(revtr, systrace_revalias, node, revcompare);
+SPLAY_PROTOTYPE(revtr, systrace_revalias, node, revcompare)
+SPLAY_GENERATE(revtr, systrace_revalias, node, revcompare)
 
 int
 systrace_initalias(void)

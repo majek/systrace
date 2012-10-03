@@ -102,7 +102,7 @@ as		{ return AS; }
 "!="		{ return NEQUAL; }
 "<"		{ return LESSER; }
 ">"		{ return GREATER; }
-[\_\$A-Za-z][\.\(\)\/A-Za-z_\-0-9]* { yylval.string = strdup(yytext); return STRING; }
+[\_\$A-Za-z][\.\(\)\/A-Za-z_\-0-9]*\$? { yylval.string = strdup(yytext); return STRING; }
 [0-9]+		{ yylval.number = atoi(yytext); return NUMBER; }
 \"		{ BEGIN(quote);
 		  *quotestr = '\0';

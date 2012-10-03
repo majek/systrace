@@ -57,7 +57,7 @@
 #include "systrace.h"
 
 #define FL(w,c)	do { \
-	if (flags & (w)) \
+	if (flags & (w) && p < str + sizeof str - 1) \
 		*p++ = (c); \
 } while (0)
 
@@ -69,6 +69,8 @@ static int print_uname(char *, size_t, struct intercept_translate *);
 static int print_pidname(char *, size_t, struct intercept_translate *);
 static int print_signame(char *, size_t, struct intercept_translate *);
 static int print_fcntlcmd(char *, size_t, struct intercept_translate *);
+static int print_memprot(char *, size_t, struct intercept_translate *);
+static int print_fileflags(char *, size_t, struct intercept_translate *);
 static int get_argv(struct intercept_translate *, int, pid_t, void *);
 static int print_argv(char *, size_t, struct intercept_translate *);
 
@@ -82,17 +84,17 @@ print_oflags(char *buf, size_t buflen, struct intercept_translate *tl)
 	p = str;
 	switch (flags & O_ACCMODE) {
 	case O_RDONLY:
-		strcpy(p, "ro");
+		strlcpy(p, "ro", str + sizeof str - p);
 		isread = 1;
 		break;
 	case O_WRONLY:
-		strcpy(p, "wo");
+		strlcpy(p, "wo", str + sizeof str - p);
 		break;
 	case O_RDWR:
-		strcpy(p, "rw");
+		strlcpy(p, "rw", str + sizeof str - p);
 		break;
 	default:
-		strcpy(p, "--");
+		strlcpy(p, "--", str + sizeof str - p);
 		break;
 	}
 
@@ -439,6 +441,21 @@ print_fcntlcmd(char *buf, size_t buflen, struct intercept_translate *tl)
 #ifdef F_GETSIG
 	case F_GETSIG:
 		name = "F_GETSIG";
+		break;
+#endif
+#ifdef F_GETLK
+	case F_GETLK:
+		name = "F_GETLK";
+		break;
+#endif
+#ifdef F_SETLK
+	case F_SETLK:
+		name = "F_SETLK";
+		break;
+#endif
+#ifdef F_SETLKW
+	case F_SETLKW:
+		name = "F_SETLKW";
 		break;
 #endif
 	default:

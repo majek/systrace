@@ -10,6 +10,7 @@
 #include <unistd.h>
 #include <assert.h>
 #include <errno.h>
+#include <stdlib.h>
 
 #ifdef HAVE_SCHED_H
 #include <sched.h>

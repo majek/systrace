@@ -2,6 +2,10 @@
  * Copyright (c) 2002 Marius Aamodt Eriksen <marius@umich.edu>
  */
 
+#ifndef NR_syscalls
+#define NR_syscalls MAX_SYSCALLS
+#endif
+
 /*
  * this file emulates openbsd's syscallnames[] array.  linux does not
  * have such a feature.  automatically generated from
@@ -329,10 +333,18 @@ linux_syscall_name(pid_t pidnr, int number)
 			if (linux_syscallnames[nr_syscalls] == NULL)
 				break;
 	}
-	if (number < 0 || number >= nr_syscalls) {
-		DFPRINTF((stderr, "%s: pid %d Bad number: %d\n",
-			__func__, pidnr, number));
+	if (number < -1 || number >= nr_syscalls * 2) {
+		errx(1, "pid %d Bad syscall number: %d\n", pidnr, number);
+	}
+	/* handle spurious -1 on entry */
+	if (number == -1) {
 		return (NULL);
+	}
+	if (number >= nr_syscalls) {
+	        /* linux usually has header files and kernel out of sync */
+	        static char name[32];
+		snprintf(name, sizeof(name), "unknown-%d", number);
+		return (name);
 	}
 
 	return (linux_syscallnames[number]);
@@ -345,6 +357,10 @@ linux_syscall_number(const char *emulation, const char *name)
 	for (i = 0; i < NR_syscalls && linux_syscallnames[i]; i++)
 		if (!strcmp(name, linux_syscallnames[i]))
 			return i;
+	if (strncmp(name, "unknown-", 8) == 0) {
+		/* guess the system call number from the generated name */
+		return atoi(name + 8);
+	}
 
 	return (-1);
 }

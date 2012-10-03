@@ -86,8 +86,12 @@ get_socketcall(struct intercept_translate *trans, int fd, pid_t pid, void *addr)
 {
 	int call = (intptr_t)addr;
 
-	systrace_switch_alias("linux", "socketcall", "linux",
-	    linux_socketcall_names[call]);
+	/* check if this call is valid */
+	if (call < sizeof(linux_socketcall_names) / sizeof(*linux_socketcall_names)
+		&& call > 0) {
+		systrace_switch_alias("linux", "socketcall", "linux",
+		    linux_socketcall_names[call]);
+	}
 
 	/* We don't want to print the argument .. */
 	trans->trans_valid = 0;
@@ -120,6 +124,7 @@ get_socketcall_args(struct intercept_translate *trans, int fd, pid_t pid,
 	if (intercept.io(fd, pid, INTERCEPT_READ, addr,
 		trans->trans_data, argsize) == -1) {
 		free(trans->trans_data);
+		trans->trans_data = NULL;
 		return (-1);
 	}
 

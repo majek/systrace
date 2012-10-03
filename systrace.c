@@ -73,6 +73,11 @@
 #define CRADLE_SERVER "cradle_server"
 #define CRADLE_UI     "cradle_ui"
 
+/* look up code in policy table if it's within range */
+#define FPCHECK(policy, code) \
+	(((code) >= INTERCEPT_MAXSYSCALLNR || (code) < 0) \
+		? ICPOLICY_NEVER : (policy)->kerneltable[(code)])
+
 pid_t trpid;
 int trfd;
 int connected = 0;		 /* Connected to GUI */
@@ -208,7 +213,7 @@ trans_cb(int fd, pid_t pid, int policynr,
 		    emulation, name, code, tls, repl);
 
 		/* Fast-path checking */
-		if ((action = policy->kerneltable[code]) != ICPOLICY_ASK)
+		if ((action = FPCHECK(policy, code)) != ICPOLICY_ASK)
 			goto out;
 
 		pflq = systrace_policyflq(policy, emulation, name);
@@ -229,11 +234,11 @@ trans_cb(int fd, pid_t pid, int policynr,
 			tls = &alitls;
 			emulation = alias->aemul;
 			name = alias->aname;
-			
+
 			/* Create an aliased list for filter_evaluate */
 			TAILQ_INIT(tls);
 			for (i = 0; i < alias->nargs; i++) {
-				memcpy(&alitl[i], alias->arguments[i], 
+				memcpy(&alitl[i], alias->arguments[i],
 				    sizeof(struct intercept_translate));
 				TAILQ_INSERT_TAIL(tls, &alitl[i], next);
 			}
@@ -243,16 +248,16 @@ trans_cb(int fd, pid_t pid, int policynr,
 				errx(1, "%s:%d: no filter queue",
 				    __func__, __LINE__);
 
-			action = filter_evaluate(tls, pflq, ipid);
-			if (action != ICPOLICY_ASK)
-				goto done;
-
 			make_output(output, sizeof(output), binname, pid, ppid,
 			    policynr, policy->name, policy->nfilters,
 			    alias->aemul, alias->aname, code, tls, NULL);
+
+			action = filter_evaluate(tls, pflq, ipid);
+			if (action != ICPOLICY_ASK)
+				goto done;
 		}
 
-		/* 
+		/*
 		 * At this point, we have to ask the user, but we may check
 		 * if the policy has been updated in the meanwhile.
 		 */
@@ -332,14 +337,14 @@ gen_cb(int fd, pid_t pid, int policynr, const char *name, int code,
 
 	do {
 		/* Fast-path checking */
-		if ((action = policy->kerneltable[code]) != ICPOLICY_ASK)
+		if ((action = FPCHECK(policy, code)) != ICPOLICY_ASK)
 			goto out;
 
 		action = filter_evaluate(NULL, pflq, ipid);
 
 		if (action != ICPOLICY_ASK)
 			goto haveresult;
-		/* 
+		/*
 		 * At this point, we have to ask the user, but we may check
 		 * if the policy has been updated in the meanwhile.
 		 */
@@ -802,7 +807,7 @@ main(int argc, char **argv)
 #else
 	if (signal(SIGCHLD, SIG_DFL) == SIG_ERR)
 		err(1, "signal");
-#endif	
+#endif
 
 	if (signal(SIGPIPE, SIG_IGN) == SIG_ERR)
 		err(1, "signal");
