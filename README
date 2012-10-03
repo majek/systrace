@@ -1,4 +1,4 @@
-Systrace 1.6 - 2006-03-24
+Systrace 1.6 - 2008-06-12
 -------------------------
 
 Systrace enforces system call policies for applications by
@@ -45,6 +45,41 @@ Features
   - Remote Monitoring and Intrusion Detection.
   - Privilege Elevation: Add-on capabilities.
 
+
+Installing Systrace
+-------------------
+
+To install on Linux, you must first install libevent.   You can get the
+libevent tarball at 
+   
+   http://monkey.org/~provos/libevent/
+
+When you run ./configure, use --prefix=/usr.   This will set up libevent to
+be installed in a location where systrace can find it.
+
+After building libevent, unpack the Systrace tarball.   You should be able to
+do './configure && make' to build Systrace and 'make install' to install
+it on your system.
+
+
+Resolving issues:
+
+If you installed libevent in somewhere other than /usr (such as the default
+/usr/local) and have problems, you will need to run ./configure for Systrace 
+as follows: 
+
+   ./configure --with-libevent=/usr/local/
+
+If you build now, you will notice that Systrace builds, but the regression 
+tests fail.   This is because Systrace cannot find libevent.   This can be
+fixed by adding the path to libevent to your LD_LIBRARY_PATH variable.   
+For example:
+
+   export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
+
+
+
+
 General Notes
 -----------------
 
@@ -65,6 +100,8 @@ Marius Eriksen's Linux kernel patches from
   http://www.citi.umich.edu/u/provos/systrace/linux.html
 
 Niels Provos
+
+
 
 Postscript
 ----------

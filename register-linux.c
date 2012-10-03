@@ -146,8 +146,8 @@ systrace_initcb(void)
 	intercept_register_translink("linux", "chmod", 0);
 	intercept_register_translation("linux", "chmod", 1, &ic_modeflags);
 
- 	X(intercept_register_sccb("native", "fcntl", trans_cb, NULL));
- 	intercept_register_translation("native", "fcntl", 1, &ic_fcntlcmd);
+ 	X(intercept_register_sccb("linux", "fcntl", trans_cb, NULL));
+ 	intercept_register_translation("linux", "fcntl", 1, &ic_fcntlcmd);
 
 	/* i386 specific translation */
 	X(intercept_register_sccb("linux", "old_mmap", trans_cb, NULL));
@@ -184,6 +184,113 @@ systrace_initcb(void)
 	X(intercept_register_sccb("linux", "kill", trans_cb, NULL));
 	intercept_register_translation("linux", "kill", 0, &ic_pidname);
 	intercept_register_translation("linux", "kill", 1, &ic_signame);
+
+#ifdef PTRACE_LINUX64
+	X(intercept_register_sccb("linux64", "chown", trans_cb, NULL));
+	intercept_register_transfn("linux64", "chown", 0);
+	intercept_register_translation("linux64", "chown", 1, &ic_uidt);
+	intercept_register_translation("linux64", "chown", 2, &ic_gidt);
+	X(intercept_register_sccb("linux64", "fchown", trans_cb, NULL));
+	intercept_register_translation("linux64", "fchown", 0, &ic_fdt);
+	intercept_register_translation("linux64", "fchown", 1, &ic_uidt);
+	intercept_register_translation("linux64", "fchown", 2, &ic_gidt);
+
+	X(intercept_register_sccb("linux64", "fchmod", trans_cb, NULL));
+	intercept_register_translation("linux64", "fchmod", 0, &ic_fdt);
+	intercept_register_translation("linux64", "fchmod", 1, &ic_modeflags);
+
+	X(intercept_register_sccb("linux64", "chdir", trans_cb, NULL));
+	intercept_register_transfn("linux64", "chdir", 0);
+	X(intercept_register_sccb("linux64", "chroot", trans_cb, NULL));
+	intercept_register_transfn("linux64", "chroot", 0);
+
+	X(intercept_register_sccb("linux64", "setuid", trans_cb, NULL));
+	intercept_register_translation("linux64", "setuid", 0, &ic_uidt);
+	intercept_register_translation("linux64", "setuid", 0, &ic_uname);
+
+	X(intercept_register_sccb("linux64", "setgid", trans_cb, NULL));
+	intercept_register_translation("linux64", "setgid", 0, &ic_gidt);
+
+	X(intercept_register_sccb("linux64", "open", trans_cb, NULL));
+	tl = intercept_register_translink("linux64", "open", 0);
+	intercept_register_translation("linux64", "open", 1, &ic_linux_oflags);
+	alias = systrace_new_alias("linux64", "open", "linux64", "fswrite");
+	systrace_alias_add_trans(alias, tl);
+
+	X(intercept_register_sccb("linux64", "stat", trans_cb, NULL));
+	tl = intercept_register_translink("linux64", "stat", 0);
+	alias = systrace_new_alias("linux64", "stat", "linux64", "fsread");
+	systrace_alias_add_trans(alias, tl);
+
+	X(intercept_register_sccb("linux64", "lstat", trans_cb, NULL));
+	tl = intercept_register_translink("linux64", "lstat", 0);
+	alias = systrace_new_alias("linux64", "lstat", "linux64", "fsread");
+	systrace_alias_add_trans(alias, tl);
+
+	X(intercept_register_sccb("linux64", "execve", trans_cb, NULL));
+	intercept_register_translink("linux64", "execve", 0);
+	X(intercept_register_sccb("linux64", "access", trans_cb, NULL));
+	tl = intercept_register_translink("linux64", "access", 0);
+	alias = systrace_new_alias("linux64", "access", "linux64", "fsread");
+	systrace_alias_add_trans(alias, tl);
+	X(intercept_register_sccb("linux64", "symlink", trans_cb, NULL));
+	intercept_register_transstring("linux64", "symlink", 0);
+	intercept_register_translink("linux64", "symlink", 1);
+	X(intercept_register_sccb("linux64", "link", trans_cb, NULL));
+	intercept_register_translink("linux64", "link", 0);
+	intercept_register_translink("linux64", "link", 1);
+	X(intercept_register_sccb("linux64", "readlink", trans_cb, NULL));
+	tl = intercept_register_translink("linux64", "readlink", 0);
+	alias = systrace_new_alias("linux64", "readlink", "linux64", "fsread");
+	systrace_alias_add_trans(alias, tl);
+	X(intercept_register_sccb("linux64", "rename", trans_cb, NULL));
+	intercept_register_translation("linux64", "rename", 0,
+	    &ic_translate_unlinkname);
+	intercept_register_translink("linux64", "rename", 1);
+	X(intercept_register_sccb("linux64", "mkdir", trans_cb, NULL));
+	tl = intercept_register_translation("linux64", "mkdir", 0,
+	    &ic_translate_unlinkname);
+	alias = systrace_new_alias("linux64", "mkdir", "linux64", "fswrite");
+	systrace_alias_add_trans(alias, tl);
+	X(intercept_register_sccb("linux64", "rmdir", trans_cb, NULL));
+	tl = intercept_register_translink("linux64", "rmdir", 0);
+	alias = systrace_new_alias("linux64", "rmdir", "linux64", "fswrite");
+	systrace_alias_add_trans(alias, tl);
+	X(intercept_register_sccb("linux64", "unlink", trans_cb, NULL));
+	tl = intercept_register_translink("linux64", "unlink", 0);
+	alias = systrace_new_alias("linux64", "unlink", "linux64", "fswrite");
+	systrace_alias_add_trans(alias, tl);
+	X(intercept_register_sccb("linux64", "chmod", trans_cb, NULL));
+	intercept_register_translink("linux64", "chmod", 0);
+	intercept_register_translation("linux64", "chmod", 1, &ic_modeflags);
+
+	X(intercept_register_sccb("linux64", "fcntl", trans_cb, NULL));
+	intercept_register_translation("linux64", "fcntl", 1, &ic_fcntlcmd);
+
+	X(intercept_register_sccb("linux64", "mmap", trans_cb, NULL));
+	intercept_register_translation("linux64", "mmap", 2, &ic_memprot);
+	X(intercept_register_sccb("linux64", "mprotect", trans_cb, NULL));
+	intercept_register_translation("linux64", "mprotect", 2, &ic_memprot);
+
+	X(intercept_register_sccb("linux64", "mknod", trans_cb, NULL));
+	intercept_register_translation("linux64", "mknod", 0,
+	    &ic_translate_unlinkname);
+	intercept_register_translation("linux64", "mknod", 1, &ic_modeflags);
+	
+	X(intercept_register_sccb("linux64", "sendmsg", trans_cb, NULL));
+	intercept_register_translation("linux64", "sendmsg", 1,
+	    &ic_translate_sendmsg);
+	X(intercept_register_sccb("linux64", "connect", trans_cb, NULL));
+	intercept_register_translation("linux64", "connect", 1,
+	    &ic_translate_connect);
+	X(intercept_register_sccb("linux64", "sendto", trans_cb, NULL));
+	intercept_register_translation("linux64", "sendto", 4,
+	    &ic_translate_connect);
+	X(intercept_register_sccb("linux64", "bind", trans_cb, NULL));
+	intercept_register_translation("linux64", "bind", 1,
+	    &ic_translate_connect);
+
+#endif  /* PTRACE_LINUX64 */
 
 	X(intercept_register_execcb(execres_cb, NULL));
 	X(intercept_register_pfreecb(policyfree_cb, NULL));

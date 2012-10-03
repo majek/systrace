@@ -2,6 +2,11 @@
 
 echo "Performing simple regression tests"
 OS=`uname`
+if [ "$OS" = "Linux" ]; then
+  if [ `uname -m` = "x86_64" ]; then
+    OS="Linux64"
+  fi
+fi
 RES=0
 
 for POL in *.policy.$OS; do

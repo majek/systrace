@@ -143,6 +143,7 @@ struct intercept_replace {
 
 TAILQ_HEAD(intercept_tlq, intercept_translate);
 
+const char *intercept_version(void);
 int intercept_init(void);
 pid_t intercept_run(int, int, uid_t, gid_t, char *, char * const *);
 int intercept_open(void);

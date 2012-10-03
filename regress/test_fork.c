@@ -178,7 +178,7 @@ void Test4(void)
 	wpid = waitpid(-1, &status, __WCLONE | __WALL);
 	if (wpid == -1)
 		err(1, "waitpid");
-	printf("Got wpid %d status %d, wanted %d\n", wpid, status);
+	printf("Got wpid %d status %d, wanted %d\n", wpid, status, pid);
 
 	wpid = waitpid(-1, &status, __WCLONE | __WALL);
 	assert(wpid == -1);

@@ -136,6 +136,12 @@ SPLAY_GENERATE(pidtree, intercept_pid, next, pidcompare)
 extern struct intercept_system intercept;
 int ic_abort;
 
+const char *
+intercept_version(void)
+{
+	return (intercept.name);
+}
+
 int
 intercept_init(void)
 {

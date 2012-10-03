@@ -50,10 +50,15 @@ typedef u_int32_t u32;
 #include <linux/types.h>
 #ifdef HAVE_LINUX_USER_H
 #include <linux/user.h>
-#endif
+#else
+#ifdef HAVE_SYS_USER_H
+#include <sys/user.h>
+#else
 #ifdef HAVE_ASM_USER_H
 #include <asm/user.h>
-#endif
+#endif  /* HAVE_ASM_USER_H */
+#endif  /* HAVE_SYS_USER_H */
+#endif  /* HAVE_LINUX_USER_H */
 #include <linux/ptrace.h>	/* for PTRACE_O_TRACESYSGOOD */
 #include <sys/queue.h>
 #include <sys/tree.h>
@@ -89,6 +94,41 @@ typedef u_int32_t u32;
 #include "linux_syscalls.c"
 #include "systrace-errno.h"
 
+#ifdef PTRACE_LINUX64
+#define ISLINUX32(x)		(linux_call_type((x)->cs) == LINUX32)
+#define SYSCALL_NUM(x)		(x)->orig_rax
+#define SET_RETURN_CODE(x, v)	(x)->rax = (v)
+#define RETURN_CODE(x)		(ISLINUX32(x) ? (long)(int)(x)->rax : (x)->rax)
+#define ARGUMENT_0(x)		(ISLINUX32(x) ? (x)->rbx : (x)->rdi)
+#define ARGUMENT_1(x)		(ISLINUX32(x) ? (x)->rcx : (x)->rsi)
+#define ARGUMENT_2(x)		(ISLINUX32(x) ? (x)->rdx : (x)->rdx)
+#define ARGUMENT_3(x)		(ISLINUX32(x) ? (x)->rsi : (x)->rcx)
+#define ARGUMENT_4(x)		(ISLINUX32(x) ? (x)->rdi : (x)->r8)
+#define ARGUMENT_5(x)		(ISLINUX32(x) ? (x)->rbp : (x)->r9)
+#define SET_ARGUMENT_0(x, v)	if (ISLINUX32(x)) (x)->rbx = (v); else (x)->rdi = (v)
+#define SET_ARGUMENT_1(x, v)	if (ISLINUX32(x)) (x)->rcx = (v); else (x)->rsi = (v)
+#define SET_ARGUMENT_2(x, v)	if (ISLINUX32(x)) (x)->rdx = (v); else (x)->rdx = (v)
+#define SET_ARGUMENT_3(x, v)	if (ISLINUX32(x)) (x)->rsi = (v); else (x)->rcx = (v)
+#define SET_ARGUMENT_4(x, v)	if (ISLINUX32(x)) (x)->rdi = (v); else (x)->r8 = (v)
+#define SET_ARGUMENT_5(x, v)	if (ISLINUX32(x)) (x)->rbp = (v); else (x)->r9 = (v)
+#else
+#define SYSCALL_NUM(x)		(x)->orig_eax
+#define SET_RETURN_CODE(x, v)	(x)->eax = (v)
+#define RETURN_CODE(x)		(x)->eax
+#define ARGUMENT_0(x)		(x)->ebx
+#define ARGUMENT_1(x)		(x)->ecx
+#define ARGUMENT_2(x)		(x)->edx
+#define ARGUMENT_3(x)		(x)->esi
+#define ARGUMENT_4(x)		(x)->edi
+#define ARGUMENT_5(x)		(x)->ebp
+#define SET_ARGUMENT_0(x, v)	(x)->ebx = (v)
+#define SET_ARGUMENT_1(x, v)	(x)->ecx = (v)
+#define SET_ARGUMENT_2(x, v)	(x)->edx = (v)
+#define SET_ARGUMENT_3(x, v)	(x)->esi = (v)
+#define SET_ARGUMENT_4(x, v)	(x)->edi = (v)
+#define SET_ARGUMENT_5(x, v)	(x)->ebp = (v)
+#endif /* !PTRACE_LINUX64 */
+
 static int                   linux_init(void);
 static int                   linux_attach(int, pid_t);
 static int                   linux_report(int, pid_t);
@@ -97,9 +137,8 @@ static int                   linux_open(void);
 static struct intercept_pid *linux_getpid(pid_t);
 static void                  linux_freepid(struct intercept_pid *);
 static void                  linux_clonepid(struct intercept_pid *, struct intercept_pid *);
-static const char           *linux_syscall_name(pid_t, int);
+static const char           *linux_syscall_name(enum LINUX_CALL_TYPES, pid_t, int);
 static int                   linux_syscall_number(const char *, const char *);
-static short                 linux_translate_policy(short);
 static short                 linux_translate_flags(short);
 static int                   linux_translate_errno(int);
 static int                   linux_answer(int, pid_t, u_int32_t, short, int, short, struct elevate *);
@@ -138,7 +177,7 @@ static void                  linux_atexit(void);
 #define SYSTR_FLAGS_CLONE_EXITING	0x400
 
 struct linux_policy {
-	int error_code[MAX_SYSCALLS];
+	long error_code[MAX_SYSCALLS];
 };
 
 #define MAX_POLICIES	500
@@ -157,7 +196,7 @@ struct linux_data {
 	enum { SYSCALL_START = 0, SYSCALL_END } status;
 	int policy;
 	int flags;
-	int error_code;
+	long error_code;
 	long pstatus;	/* where to stick the return code */
 	int wstatus;	/* saved error code for exit */
 	pid_t waitpid;
@@ -175,6 +214,51 @@ struct linux_data {
 };
 
 static int notify_fd = -1; 
+
+enum LINUX_SYSCALLS {
+	SYSTR_CLONE = 0,
+	SYSTR_GETPID = 1,
+	SYSTR_WAIT4 = 2,
+	SYSTR_EXECVE = 3,
+	SYSTR_SETSID = 4,
+	SYSTR_SETPGID = 5,
+	SYSTR_NUM_CALLS = 6
+};
+
+/* mapps special system calls used internally by the ptrace backend to
+ * the system call number. */
+static int
+linux_map_call(enum LINUX_CALL_TYPES call_type, enum LINUX_SYSCALLS call_number)
+{
+	static int initialized;
+	static int mappings[LINUX_NUM_VERSIONS][SYSTR_NUM_CALLS];
+	if (!initialized) {
+		const char *names[] = {
+			"clone", "getpid", "wait4", "execve", "setsid", "setpgid",
+			NULL
+		};
+		
+		int i;
+		for (i = 0; names[i] != NULL; ++i) {
+			int res = linux_syscall_number("linux", names[i]);
+			assert(res != -1);
+			mappings[LINUX32][i] = res;
+			res = linux_syscall_number("linux64", names[i]);
+			assert(res != -1);
+			mappings[LINUX64][i] = res;
+		}
+		initialized = 1;
+	}
+
+	assert(call_type >= 0);
+	assert(call_type < LINUX_NUM_VERSIONS);
+	assert(call_number >= 0);
+	assert(call_number < SYSTR_NUM_CALLS);
+
+	return (mappings[call_type][call_number]);
+}
+
+
 
 static void
 linux_term_signal(int fd, short what, void *arg)
@@ -223,13 +307,13 @@ linux_attach(int fd, pid_t pid)
 	int status = 0;
 	int res = ptrace(PTRACE_ATTACH, pid, NULL, NULL);
 	if (res == -1) {
-		warn("%s: ptrace", __func__);
+		warn("%s:%d %s: ptrace", __FILE__, __LINE__, __func__);
 		return (-1);
 	}
 
 	res = waitpid(pid, &status, 0);
 	if (res == -1 || !WIFSTOPPED(status)) {
-		warn("%s: waitpid: %d", __func__, status);
+		warn("%s:%d %s: waitpid: %d", __FILE__, __LINE__, __func__, status);
 		ptrace(PTRACE_KILL, pid, NULL, NULL);
 		return (-1);
 	}
@@ -239,7 +323,8 @@ linux_attach(int fd, pid_t pid)
 	res = ptrace(PTRACE_SETOPTIONS, pid,
 	    NULL, (void *)PTRACE_O_TRACESYSGOOD);
 	if (res == -1) {
-		warn("%s: PTRACE_O_TRACESYSGOOD failed", __func__);
+		warn("%s:%d %s: PTRACE_O_TRACESYSGOOD failed",
+		    __FILE__, __LINE__, __func__);
 	} else {
 		sigsyscall |= 0x80;
 	}
@@ -286,9 +371,9 @@ linux_open(void)
 	notify_fd = pair[1];
 
 	if (fcntl(fd, F_SETFD, 1) == -1)
-		warn("fcntl(F_SETFD)");
+		warn("%s:%d fcntl(F_SETFD)", __FILE__, __LINE__);
 	if (fcntl(notify_fd, F_SETFD, 1) == -1)
-		warn("fcntl(F_SETFD)");
+		warn("%s:%d fcntl(F_SETFD)", __FILE__, __LINE__);
 
 	return (fd);
 }
@@ -550,23 +635,6 @@ out:
 }
 
 static short
-linux_translate_policy(short policy)
-{
-	switch (policy) {
-	case ICPOLICY_ASK:
-		return (SYSTR_POLICY_ASK);
-	case ICPOLICY_PERMIT:
-		return (SYSTR_POLICY_PERMIT);
-	case ICPOLICY_NEVER:
-		return (SYSTR_POLICY_NEVER);
-	default:
-		if (policy > 0)
-			return (-policy);
-		return (SYSTR_POLICY_NEVER);
-	}
-}
-
-static short
 linux_translate_flags(short flags)
 {
 	switch (flags) {
@@ -671,18 +739,18 @@ linux_abortsyscall(pid_t pid)
 			return;
 		err(1, "%s: ptrace getregs", __func__);
 	}
-	regs.orig_eax = 0xbadca11;
+	SYSCALL_NUM(&regs) = 0xbadca11;
 	res = ptrace(PTRACE_SETREGS, pid, NULL, &regs);
 	if (res == -1)
 		err(1, "%s: ptrace getregs", __func__);
 }
 
 static void
-linux_write_returncode(pid_t pid, struct user_regs_struct* regs, int code)
+linux_write_returncode(pid_t pid, struct user_regs_struct* regs, long code)
 {
 	int res;
 	DFPRINTF((stderr, "%s: setting return code to %d\n", __func__, code));
-	regs->eax = code;
+	SET_RETURN_CODE(regs, code);
 	res = ptrace(PTRACE_SETREGS, pid, NULL, regs);
 	if (res == -1)
 		err(1, "%s: ptrace getregs", __func__);
@@ -694,9 +762,9 @@ linux_write_returncode(pid_t pid, struct user_regs_struct* regs, int code)
  */
 
 static int
-linux_policytranslate(int policy, int errnumber, int *result)
+linux_policytranslate(int policy, int errnumber, long *result)
 {
-	int error_code = 0;
+	long error_code = 0;
 	int res = 0;
 
 	DFPRINTF((stderr, "%s: policy %d\n", __func__, policy));
@@ -727,11 +795,11 @@ linux_policytranslate(int policy, int errnumber, int *result)
  */
 
 static void
-linux_set_returncode(pid_t pid, int error_code)
+linux_set_returncode(pid_t pid, long error_code)
 {
 	struct intercept_pid *icpid;
 	struct linux_data *data;
-	DFPRINTF((stderr, "%s: setting return code: pid %d error %d\n",
+	DFPRINTF((stderr, "%s: setting return code: pid %d error %ld\n",
 		__func__, pid, error_code));
 
 	icpid = intercept_findpid(pid);
@@ -743,7 +811,7 @@ linux_set_returncode(pid_t pid, int error_code)
 }
 
 static void
-linux_abortsyscall_error(pid_t pid, int error_code)
+linux_abortsyscall_error(pid_t pid, long error_code)
 {
 	DFPRINTF((stderr, "%s: aborting system call: pid %d error %d\n",
 		__func__, pid, error_code));
@@ -759,7 +827,7 @@ linux_answer(int fd, pid_t pid, u_int32_t seqnr, short policy, int errnumber,
     short flags, struct elevate *elevate)
 {
 	int res = -1;
-	int error_code = 0;
+	long error_code = 0;
 	struct intercept_pid *icpid;
 	struct linux_data *data = NULL;
 
@@ -779,10 +847,17 @@ linux_answer(int fd, pid_t pid, u_int32_t seqnr, short policy, int errnumber,
 	if (linux_policytranslate(policy, errnumber, &error_code) == -1) {
 		linux_abortsyscall_error(pid, error_code);
 	} else {
+		enum LINUX_CALL_TYPES call_type;
+#ifdef PTRACE_LINUX64
+		call_type = linux_call_type(data->regs.cs);
+#else
+		call_type = LINUX32;
+#endif
 		DFPRINTF((stderr, "%s: allowing system call\n", __func__));
 		/* See notes in linux_systemcall(), only set this flag is the fork is
 		 * permitted. */
-		if (linux_isfork(linux_syscall_name(pid, data->regs.orig_eax)))
+		if (linux_isfork(linux_syscall_name(
+					 call_type, pid, SYSCALL_NUM(&data->regs))))
 			data->flags |= SYSTR_FLAGS_SAWFORK;
 	}
 	
@@ -792,7 +867,7 @@ linux_answer(int fd, pid_t pid, u_int32_t seqnr, short policy, int errnumber,
 		/* It's possible that we just killed the child.  Haha */
 		if (errno == ESRCH)
 			return (0);
-		warn("%s: ptrace", __func__);
+		warn("%s:%d %s: ptrace", __FILE__, __LINE__, __func__);
 	}
 	
 	/* no elevation */
@@ -804,7 +879,7 @@ static int
 linux_newpolicy(int fd)
 {
 	int i;
-	DFPRINTF((stderr, "%s: fd %d\n", __func__, fd));
+	DFPRINTF((stderr, "%s:%d %s: fd %d\n", __FILE__, __LINE__, __func__, fd));
 
 	for (i = 0; i < MAX_POLICIES; i++) {
 		if (!policy_used[i])
@@ -812,7 +887,7 @@ linux_newpolicy(int fd)
 	}
 
 	if (i >= MAX_POLICIES) {
-		warnx("%s: out of policies", __func__);
+		warnx("%s:%d %s: out of policies", __FILE__, __LINE__, __func__);
 		return (-1);
 	}
 
@@ -830,7 +905,8 @@ linux_assignpolicy(int fd, pid_t pid, int num)
 
 	icpid = intercept_findpid(pid);
 	if (icpid == NULL) {
-		warnx("%s: cannot find pid %d", __func__, pid);
+		warnx("%s:%d %s: cannot find pid %d",
+		    __FILE__, __LINE__, __func__, pid);
 		return (-1);
 	}
 
@@ -849,7 +925,8 @@ linux_modifypolicy(int fd, int num, int code, short policy)
 		errx(1, "%s: bad parameters", __func__);
 
 	if (!policy_used[num]) {
-		warnx("%s: unused policy number %d", __func__, num);
+		warnx("%s:%d %s: unused policy number %d",
+		    __FILE__, __LINE__, __func__, num);
 		return (-1);
 	}
 
@@ -871,26 +948,53 @@ linux_replace(int fd, pid_t pid, u_int16_t seqnr,
 static int
 linux_io(int fd, pid_t pid, int op, void *addr, u_char *buf, size_t size)
 {
-	long val;
 	int i = 0;
-	DFPRINTF((stderr, "%s: pid %d\n", __func__, pid));
+	union {
+		long val;
+		char x[sizeof(long)];
+	} u;
+
+	DFPRINTF((stderr, "%s: pid %d, %p for %ld\n", __func__, pid, addr, size));
 
 	if (op != INTERCEPT_READ)
 		errx(1, "%s: unsupported IO operation", __func__);
-	
-	while (i < size) {
-		val = ptrace(PTRACE_PEEKDATA, pid, addr, 0);
-		/* Man page says this is how failure is indicated */
-		if (val == -1 && errno != 0) {
-			warn("%s: read at %p failed", __func__, addr);
+
+	if ((long)addr & (sizeof(long) - 1)) {
+		/* the address is not word aligned */
+		int off = (long)addr - ((long)addr & -sizeof(long));
+		int tocopy;
+		addr = (void *)((long)addr & -sizeof(long));
+		u.val = ptrace(PTRACE_PEEKDATA, pid, addr, 0);
+		if (u.val == -1) {
+			DFPRINTF((stderr,
+				"%s:%d %s: read at %p failed (start): %d\n",
+				__FILE__, __LINE__, __func__, addr, errno));
+			errno = EINVAL;
 			return (-1);
 		}
-		memcpy(buf, &val,
-		    size - i < sizeof(val) ? size - i : sizeof(val));
 
-		i += sizeof(val);
-		addr = (char *)addr + sizeof(val);
-		buf += sizeof(val);
+		tocopy = MIN(sizeof(long) - off, size);
+		memcpy(buf, &u.x[off], tocopy);
+		addr += sizeof(long);
+		buf += tocopy;
+		size -= tocopy;
+	}
+	
+	while (i < size) {
+		u.val = ptrace(PTRACE_PEEKDATA, pid, addr, 0);
+		/* Man page says this is how failure is indicated */
+		if (u.val == -1 && errno != 0) {
+			DFPRINTF((stderr,
+				"%s:%d %s: read at %p failed (%d of %ld): %d\n",
+				__FILE__, __LINE__, __func__, addr, i, size, errno));
+			errno = EINVAL;
+			return (-1);
+		}
+		memcpy(buf, u.x, size - i < sizeof(long) ? size - i : sizeof(long));
+
+		i += sizeof(long);
+		addr = (char *)addr + sizeof(long);
+		buf += sizeof(long);
 	}
 	
 	return (0);
@@ -922,29 +1026,29 @@ linux_argument(int off, void *pargs, int argsize, void **pres)
 	
 	switch (off) {
 	case 0:
-		*pres = (void *)regs->ebx;
+		*pres = (void *)ARGUMENT_0(regs);
 		break;
 	case 1:
-		*pres = (void *)regs->ecx;
+		*pres = (void *)ARGUMENT_1(regs);
 		break;
 	case 2:
-		*pres = (void *)regs->edx;
+		*pres = (void *)ARGUMENT_2(regs);
 		break;
 	case 3:
-		*pres = (void *)regs->esi;
+		*pres = (void *)ARGUMENT_3(regs);
 		break;
 	case 4:
-		*pres = (void *)regs->edi;
+		*pres = (void *)ARGUMENT_4(regs);
 		break;
 	case 5:
-		*pres = (void *)regs->ebp;
+		*pres = (void *)ARGUMENT_5(regs);
 		break;
 	default:
 		/* out of bounds */
 		return (-1);
 	}
 
-	DFPRINTF((stderr, "%s: off %d: %lx\n", __func__, off, (long)*pres));
+	DFPRINTF((stderr, "%s: off %d: 0x%lx\n", __func__, off, (long)*pres));
 
 	return (0);
 }
@@ -956,22 +1060,22 @@ linux_set_argument(struct user_regs_struct *regs, int off, long val)
 	
 	switch (off) {
 	case 0:
-		regs->ebx = val;
+		SET_ARGUMENT_0(regs, val);
 		break;
 	case 1:
-		regs->ecx = val;
+		SET_ARGUMENT_1(regs, val);
 		break;
 	case 2:
-		regs->edx = val;
+		SET_ARGUMENT_2(regs, val);
 		break;
 	case 3:
-		regs->esi = val;
+		SET_ARGUMENT_3(regs, val);
 		break;
 	case 4:
-		regs->edi = val;
+		SET_ARGUMENT_4(regs, val);
 		break;
 	case 5:
-		regs->ebp = val;
+		SET_ARGUMENT_5(regs, val);
 		break;
 	default:
 		/* out of bounds */
@@ -1008,7 +1112,7 @@ linux_isfork(const char *sysname)
 {
 	if (sysname == NULL)
 		return (0);
-	
+
 	return (!strcmp(sysname, "fork") ||
 	    !strcmp(sysname, "vfork") ||
 	    !strcmp(sysname, "clone"));
@@ -1040,7 +1144,7 @@ linux_rewritefork(pid_t pid, const char *sysname, struct user_regs_struct *regs)
 	DFPRINTF((stderr, "%s: pid %d rewriting %s to clone\n",
 		__func__, pid, sysname));
 	
-	regs->orig_eax = __NR_clone;
+	SYSCALL_NUM(regs) = linux_map_call(linux_call_type(regs->cs), SYSTR_CLONE);
 	if (strcmp(sysname, "fork") == 0) {
 		int clone_flags = SIGCHLD | CLONE_PTRACE;
 		linux_set_argument(regs, 0, clone_flags);
@@ -1106,7 +1210,7 @@ linux_rewritewaitpid(pid_t pid, const char *sysname,
 	int res;
 	long wait_pid;
 	long woptions;
-	long orig_eax = regs->orig_eax;
+	long orig_eax = SYSCALL_NUM(regs);
 
 	DFPRINTF((stderr, "%s: pid %d rewriting %s\n", __func__, pid, sysname));
 	
@@ -1188,7 +1292,7 @@ linux_rewritewaitpid(pid_t pid, const char *sysname,
 		
 	/* XXX - turn it into a pause */
 	DFPRINTF((stderr, "%s: pid %d wait4 pausing\n",	__func__, pid));
-	regs->orig_eax = __NR_getpid;
+	SYSCALL_NUM(regs) = linux_map_call(linux_call_type(regs->cs), SYSTR_GETPID);
        
 	res = ptrace(PTRACE_SETREGS, pid, NULL, regs);
 	if (res == -1)
@@ -1198,7 +1302,7 @@ linux_rewritewaitpid(pid_t pid, const char *sysname,
 	 * So that the policy matching still works - let's hope that
 	 * nobody is going to write to the registers after us.
 	 */
-	regs->orig_eax = orig_eax;
+	SYSCALL_NUM(regs) = orig_eax;
 
 }
 
@@ -1221,7 +1325,7 @@ linux_rewritewaitpid_return(pid_t pid, struct linux_data *data, pid_t res_pid, i
 	/* Stick status */
 	if (data->pstatus != 0) {
 		res = ptrace(PTRACE_POKEDATA, pid,
-		    (void *)data->pstatus, (void *)res_status);
+		    (void *)data->pstatus, (void *)(0L | res_status));
 		if (res == -1)
 			err(1, "%s: pokeuser pid %d: %x",
 			    __func__, pid, data->pstatus);
@@ -1232,7 +1336,7 @@ linux_rewritewaitpid_return(pid_t pid, struct linux_data *data, pid_t res_pid, i
 	 * one again.  In case that there is a restart, we do not want to
 	 * enter a pause.
 	 */
-	regs.orig_eax = __NR_wait4;
+	SYSCALL_NUM(&regs) = linux_map_call(linux_call_type(regs.cs), SYSTR_WAIT4);
 
 	res = ptrace(PTRACE_SETREGS, pid, NULL, &regs);
 	if (res == -1)
@@ -1326,9 +1430,16 @@ linux_child_info(pid_t pid, pid_t cpid, struct user_regs_struct *regs)
 static void
 linux_forkreturn(pid_t pid, struct user_regs_struct *regs)
 {
-	int sysnum = regs->orig_eax;
-	pid_t child_pid = regs->eax;
-	const char *sysname = linux_syscall_name(pid, sysnum);
+	int sysnum = SYSCALL_NUM(regs);
+	pid_t child_pid = RETURN_CODE(regs);
+	const char *sysname;
+	enum LINUX_CALL_TYPES call_type;
+#ifdef PTRACE_LINUX64
+	call_type = linux_call_type(regs->cs);
+#else
+	call_type = LINUX32;
+#endif
+	sysname = linux_syscall_name(call_type, pid, sysnum);
 
 	if (!linux_isfork(sysname)) {
 		/* should only be called on fork() return */
@@ -1387,7 +1498,7 @@ linux_setpgidreturn(pid_t pid, struct user_regs_struct *regs)
 {
 	struct intercept_pid *icpid;
 	struct linux_data *data;
-	pid_t set_pid;
+	long set_pid, tmp;
 	
 	linux_argument(0, regs, sizeof(*regs), (void **)&set_pid);
 	DFPRINTF((stderr, "%s: pid %d setpgid return: target pid %d\n",
@@ -1399,7 +1510,8 @@ linux_setpgidreturn(pid_t pid, struct user_regs_struct *regs)
 	data = icpid->data;
 
 	/* remember the new pgid */
-	linux_argument(1, regs, sizeof(*regs), (void **)&data->pgid);
+	linux_argument(1, regs, sizeof(*regs), (void **)&tmp);
+	data->pgid = tmp;
 	if (data->pgid == 0)
 		data->pgid = pid;
 }
@@ -1413,7 +1525,8 @@ linux_systemcall(int fd, pid_t pid, struct intercept_pid *icpid)
 	const char *sysname = NULL;
 	int sysnumber = -1;
 	int res;
-	
+	enum LINUX_CALL_TYPES call_type;
+
 	data = icpid->data;
 	regs = &data->regs;
 
@@ -1427,17 +1540,34 @@ linux_systemcall(int fd, pid_t pid, struct intercept_pid *icpid)
 		res = ptrace(PTRACE_GETREGS, pid, NULL, &tmp);
 		if (res == -1)
 			err(1, "%s: ptrace getregs", __func__);
-		regs->eax = tmp.eax;
+		SET_RETURN_CODE(regs, RETURN_CODE(&tmp));
 	}
-	sysnumber = regs->orig_eax;
-	sysname = linux_syscall_name(pid, sysnumber);
+
+#ifdef PTRACE_LINUX64
+	call_type = linux_call_type(regs->cs);
+#else
+	call_type = LINUX32;
+#endif
+
+	sysnumber = SYSCALL_NUM(regs);
+	sysname = linux_syscall_name(call_type, pid, sysnumber);
 
 	DFPRINTF((stderr, "%s: pid %d %s(%ld) %s %ld\n",__func__, pid,
 		sysname, sysnumber,
 		data->status == SYSCALL_START ? "start" : "end",
-		-regs->eax));
+		(long)-RETURN_CODE(regs)));
 
 	if (data->status == SYSCALL_START) {
+#ifndef PTRACE_LINUX64
+		if (regs->cs != 0x73 && regs->cs != 0x23) {
+			/*
+			 * Security violation - attacker might be trying to
+			 * map to the 64-bit syscall table.
+			 */
+			linux_abortsyscall(pid);
+			errx(1, "%s: evil CS value 0x%x", __func__, regs->cs);
+		}
+#endif
 		if (sysnumber == -1) {
 			/* Spurious stuff - ignore? */
 			DFPRINTF((stderr, "%s: spurious -1 on syscall name\n",
@@ -1446,7 +1576,7 @@ linux_systemcall(int fd, pid_t pid, struct intercept_pid *icpid)
 			return;
 		}
 
-		if (-regs->eax != ENOSYS) {
+		if (-RETURN_CODE(regs) != ENOSYS) {
 		  /* 
 		   * On some Linux system's it's possible for the
 		   * child to return before we get the SIGSTOP.  That
@@ -1465,7 +1595,9 @@ linux_systemcall(int fd, pid_t pid, struct intercept_pid *icpid)
 	}
 	
 	if (data->status == SYSCALL_START) {
-		int policy, error_code;
+		char *emulation = "linux";
+		int policy;
+		long error_code;
 		
 		data->status = SYSCALL_END;
 
@@ -1485,15 +1617,27 @@ linux_systemcall(int fd, pid_t pid, struct intercept_pid *icpid)
 			if (policy == ICPOLICY_PERMIT) {
 				if (linux_isfork(sysname)) {
 					/* 
-					 * At this point we know we've seen a fork()-like call, and
-					 * it is going to be permitted. Setting this flag indicates that
-					 * on the next syscall return, we need to call linux_forkreturn()
-					 * to handle setting up a new child process.
+					 * At this point we know we've
+					 * seen a fork()-like call,
+					 * and it is going to be
+					 * permitted. Setting this
+					 * flag indicates that on the
+					 * next syscall return, we
+					 * need to call
+					 * linux_forkreturn() to
+					 * handle setting up a new
+					 * child process.
 					 *
-					 * It's important to only set this flag if we really expect the
-					 * next syscall return to be from a fork(), although it could have
-					 * failed due to erroneous clone flags or process limits, etc. 
-					 * which linux_forkreturn() must handle.
+					 * It's important to only set
+					 * this flag if we really
+					 * expect the next syscall
+					 * return to be from a fork(),
+					 * although it could have
+					 * failed due to erroneous
+					 * clone flags or process
+					 * limits, etc. which
+					 * linux_forkreturn() must
+					 * handle.
 					 *
 					 * This flag can also be set in linux_answer().
 					 */
@@ -1512,11 +1656,17 @@ linux_systemcall(int fd, pid_t pid, struct intercept_pid *icpid)
 				return;
 			}
 		}
-		
+
+#ifdef PTRACE_LINUX64
+		if (call_type == LINUX64)
+			emulation = "linux64";
+#endif
 		intercept_syscall(fd, pid, 1, data->policy,
-		    sysname, sysnumber, "linux",
+		    sysname, sysnumber, emulation,
 		    (void *)regs, sizeof(*regs));
 	} else {
+		char *emulation = "linux";
+
 		/* System call return */
 		data->status = SYSCALL_START;
 
@@ -1545,15 +1695,18 @@ linux_systemcall(int fd, pid_t pid, struct intercept_pid *icpid)
 			linux_write_returncode(pid, regs, data->error_code);
 			data->flags &= ~SYSTR_FLAGS_ERRORCODE;
 			data->error_code = 0;
-		} else if (sysnumber == __NR_execve && !regs->eax) {
+		} else if (sysnumber == linux_map_call(call_type, SYSTR_EXECVE) &&
+		    RETURN_CODE(regs) == 0) {
 			/* remember that we saw a successful execve */
 			data->flags |= SYSTR_FLAGS_SAWEXECVE;
 		} else if (data->flags & SYSTR_FLAGS_SAWFORK) {
 			data->flags &= ~SYSTR_FLAGS_SAWFORK;
 			linux_forkreturn(pid, regs);
-		} else if (sysnumber == __NR_setsid && regs->eax >= 0) {
+		} else if (sysnumber == linux_map_call(call_type, SYSTR_SETSID) &&
+		    RETURN_CODE(regs) >= 0) {
 			linux_setsidreturn(pid, regs);
-		} else if (sysnumber == __NR_setpgid && regs->eax == 0) {
+		} else if (sysnumber == linux_map_call(call_type, SYSTR_SETPGID) &&
+		    RETURN_CODE(regs) == 0) {
 			linux_setpgidreturn(pid, regs);
 		}
 		
@@ -1569,10 +1722,14 @@ linux_systemcall(int fd, pid_t pid, struct intercept_pid *icpid)
 
 		data->flags &= ~SYSTR_FLAGS_RESULT;
 
+#ifdef PTRACE_LINUX64
+		if (linux_call_type(regs->cs) == LINUX64)
+			emulation = "linux64";
+#endif
 		intercept_syscall_result(fd, pid, 1, data->policy,
-		    sysname, sysnumber, "linux",
+		    sysname, sysnumber, emulation,
 		    (void *)regs, sizeof(*regs),
-		    -regs->eax, 0 /* rval */);
+		    -RETURN_CODE(regs), 0 /* rval */);
 	}
 }
 
@@ -1747,7 +1904,8 @@ linux_read(int fd)
 
 	icpid = linux_getpid(pid);
 	if (icpid == NULL) {
-		warnx("%s: cannot find pid %d", __func__, pid);
+		warnx("%s:%d %s: cannot find pid %d",
+		    __FILE__, __LINE__, __func__, pid);
 		return (-1);
 	}
 
@@ -1832,9 +1990,12 @@ linux_read(int fd)
 	return (0);
 }
 
-
 struct intercept_system intercept = {
-	"linux",
+#ifdef PTRACE_LINUX64
+	"linux64 ptrace",
+#else
+	"linux32 ptrace",
+#endif
 	linux_init,
 	linux_open,
 	linux_attach,

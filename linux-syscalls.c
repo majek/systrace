@@ -72,7 +72,7 @@ static int                   linux_open(void);
 static struct intercept_pid *linux_getpid(pid_t);
 static void                  linux_freepid(struct intercept_pid *);
 static void                  linux_clonepid(struct intercept_pid *, struct intercept_pid *);
-static const char           *linux_syscall_name(pid_t, int);
+static const char           *linux_syscall_name(enum LINUX_CALL_TYPES, pid_t, int);
 static int                   linux_syscall_number(const char *, const char *);
 static short                 linux_translate_policy(short);
 static short                 linux_translate_flags(short);
@@ -119,12 +119,12 @@ linux_open(void)
 	int fd;
 
 	if ((fd = open(path, O_RDWR, 0)) == -1) {
-		warn("open: %s", path);
+		warn("%s:%d: open: %s", __FILE__, __LINE__, path);
 		return (-1);
 	}
 
 	if (fcntl(fd, F_SETFD, 1) == -1)
-		warn("fcntl(F_SETFD)");
+		warn("%s:%d: fcntl(F_SETFD)", __FILE__, __LINE__);
 
 	return (fd);
 }
@@ -365,7 +365,7 @@ linux_replace(int fd, pid_t pid, u_int16_t seqnr,
 	}
 
 	if ((ret = ioctl(fd, STRIOCREPLACE, &replace)) == -1)
-		warn("%s: ioctl", __func__);
+		warn("%s:%d %s: ioctl", __FILE__, __LINE__, __func__);
 
 	free(replace.strr_base);
 
@@ -399,7 +399,7 @@ linux_restcwd(int fd)
 	int res;
 
 	if ((res = ioctl(fd, STRIOCRESCWD, 0)) == -1)
-		warn("%s: ioctl", __func__); /* XXX */
+		warn("%s:%d %s: ioctl", __FILE__, __LINE__, __func__); /* XXX */
 
 	return (res);
 }
@@ -485,7 +485,7 @@ linux_read(int fd)
 
 
 struct intercept_system intercept = {
-	"linux",
+	"linux kernel",
 	linux_init,
 	linux_open,
 	linux_attach,

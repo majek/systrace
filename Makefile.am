@@ -14,7 +14,7 @@ systrace_SOURCES =  filter.c intercept-translate.c intercept.c \
 		cradle.c
 systrace_LDADD = @LIBOBJS@ @EVENTLIB@
 
-include_HEADERS = 
+include_HEADERS =
 
 CFLAGS = -Wall $(AM_CFLAGS)
 
@@ -30,7 +30,8 @@ EXTRA_DIST = $(man_MANS) README openbsd-syscalls.c register-openbsd.c \
 	linux-translate.c linux-translate.h \
 	linux_socket.h linux_socketcall.h getopt.c setproctitle.c \
 	regress/arch.policy.OpenBSD regress/nm.policy.Linux \
-	regress/uniq.policy.Linux regress/id.policy.NetBSD \
+	regress/uniq.policy.Linux regress/nm.policy.Linux64 \
+	regress/uniq.policy.Linux64 regress/id.policy.NetBSD \
 	regress/nm.policy.OpenBSD regress/uniq.policy.OpenBSD \
 	regress/id.policy.OpenBSD regress/regress.sh  regress/nm.args \
 	regress/uniq.args

@@ -70,7 +70,9 @@ static int print_pidname(char *, size_t, struct intercept_translate *);
 static int print_signame(char *, size_t, struct intercept_translate *);
 static int print_fcntlcmd(char *, size_t, struct intercept_translate *);
 static int print_memprot(char *, size_t, struct intercept_translate *);
+#ifdef HAVE_CHFLAGS
 static int print_fileflags(char *, size_t, struct intercept_translate *);
+#endif
 static int get_argv(struct intercept_translate *, int, pid_t, void *);
 static int print_argv(char *, size_t, struct intercept_translate *);
 
@@ -150,10 +152,20 @@ linux_print_oflags(char *buf, size_t buflen, struct intercept_translate *tl)
 	}
 
 	/* XXX - Open handling of alias */
-	if (isread)
+	if (isread) {
 		systrace_switch_alias("linux", "open", "linux", "fsread");
-	else
+#ifdef PTRACE_LINUX64
+		/* because we don't know which emulation we are
+		 * handling we are switching it for both.
+		 */
+		systrace_switch_alias("linux64", "open", "linux64", "fsread");
+#endif
+	} else {
 		systrace_switch_alias("linux", "open", "linux", "fswrite");
+#ifdef PTRACE_LINUX64
+		systrace_switch_alias("linux64", "open", "linux64", "fswrite");
+#endif
+	}
 
 	p += 2;
 

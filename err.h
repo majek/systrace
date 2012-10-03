@@ -42,9 +42,9 @@
 #ifndef _ERR_H_
 #define _ERR_H_
 
-void	err(int eval, const char *fmt, ...);
+void	err(int eval, const char *fmt, ...) __attribute__((__noreturn__));
 void	warn(const char *fmt, ...);
-void	errx(int eval, const char *fmt, ...);
+void	errx(int eval, const char *fmt, ...) __attribute__((__noreturn__));
 void	warnx(const char *fmt, ...);
 
 #endif /* !_ERR_H_ */

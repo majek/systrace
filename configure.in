@@ -3,7 +3,7 @@ AC_INIT(systrace.h)
 
 AC_CANONICAL_SYSTEM
 
-AM_INIT_AUTOMAKE(systrace, 1.6e)
+AM_INIT_AUTOMAKE(systrace, 1.6f)
 AM_CONFIG_HEADER(config.h)
 
 AC_PROG_MAKE_SET
@@ -21,7 +21,7 @@ AC_HEADER_STDC
 AC_HEADER_SYS_WAIT
 
 dnl XXX sys/{queue,tree}.h ?
-AC_CHECK_HEADERS(sys/ioctl.h sys/time.h unistd.h poll.h sched.h linux/sched.h linux/systrace.h linux/user.h asm/user.h sys/prctl.h libgen.h sched.h)
+AC_CHECK_HEADERS(sys/ioctl.h sys/time.h unistd.h poll.h sched.h linux/sched.h linux/systrace.h linux/user.h sys/user.h asm/user.h sys/prctl.h libgen.h sched.h)
 
 AC_DNET_SOCKADDR_SA_LEN
 
@@ -43,6 +43,18 @@ case "$host" in
 	SYSTR_HEADER="<sys/systrace.h>"
 	SYSTR_INC="-I/sys"
         ;;
+dnl detecting 64-bit Linux
+x86_64-*-linux*)
+	AC_LIBOBJ(register-linux)
+	AC_LIBOBJ(linux-translate)
+	AC_MSG_CHECKING([for secure systrace implementation])
+	AC_MSG_RESULT([no, using insecure ptrace])
+	AC_LIBOBJ(linux-ptrace-syscalls)
+	SYSTR_HEADER="<sys/ptrace.h>"
+	AC_DEFINE(PTRACE_LINUX64, 1,
+	[Define if we are compiling against ptrace on a 64-bit system])
+	;;
+dnl this catches all other Linux implementations
 *-*-linux*)
 	AC_LIBOBJ(register-linux)
 	AC_LIBOBJ(linux-translate)
@@ -54,10 +66,10 @@ case "$host" in
 	else
 		AC_MSG_RESULT([no - using insecure ptrace])
 		AC_LIBOBJ(linux-ptrace-syscalls)
+		AC_DEFINE(PTRACE_LINUX32, 1,
+		[Define if we are compiling against ptrace on a 32-bit system])
 		SYSTR_HEADER="<sys/ptrace.h>"
 	fi
-dnl glibc sux
-	AC_LIBOBJ(getopt)
 	;;
 *-*-darwin*)
 	AC_LIBOBJ(darwin-syscalls)
@@ -87,7 +99,7 @@ dnl Checks for library functions.
 AC_PROG_GCC_TRADITIONAL
 AC_TYPE_SIGNAL
 AC_CHECK_FUNCS(select poll socket chflags prctl)
-AC_REPLACE_FUNCS(strlcpy strlcat basename dirname setproctitle)
+AC_REPLACE_FUNCS(strlcpy strlcat basename dirname setproctitle getopt)
 
 if test "x$ac_cv_func_basename" = "xyes"; then
 	AC_MSG_CHECKING(for working basename)
@@ -152,10 +164,12 @@ AC_ARG_WITH(libevent,
      fi
      ;;
   esac ],
-[ if test -f ${prefix}/include/event.h -a -f ${prefix}/lib/libevent.a;
-then
+[ if test -f ${prefix}/include/event.h -a -f ${prefix}/lib/libevent.a; then
      EVENTINC="-I${prefix}/include"
      EVENTLIB="-L${prefix}/lib -levent"
+  elif test -f /usr/local/include/event.h -a -f /usr/local/lib/libevent.a; then
+     EVENTINC="-I/usr/local/include"
+     EVENTLIB="-L/usr/local/lib -levent"
   elif test -f /usr/include/event.h; then
      EVENTLIB="-levent"
   else

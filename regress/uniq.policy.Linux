@@ -3,6 +3,7 @@ Policy: /usr/bin/uniq, Emulation: linux
 	linux-brk: permit
 	linux-fsread: filename eq "/etc/ld.so.preload" then permit
 	linux-fsread: filename eq "/etc/ld.so.cache" then permit
+	linux-fsread: filename eq "/lib/libc.so.6" then permit
 	linux-fstat64: permit
 	linux-old_mmap: permit
 	linux-close: permit

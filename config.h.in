@@ -20,6 +20,9 @@
 /* Define to 1 if you have the `dirname' function. */
 #undef HAVE_DIRNAME
 
+/* Define to 1 if you have the `getopt' function. */
+#undef HAVE_GETOPT
+
 /* Define to 1 if you have the <inttypes.h> header file. */
 #undef HAVE_INTTYPES_H
 
@@ -104,6 +107,9 @@
 /* Define to 1 if you have the <sys/types.h> header file. */
 #undef HAVE_SYS_TYPES_H
 
+/* Define to 1 if you have the <sys/user.h> header file. */
+#undef HAVE_SYS_USER_H
+
 /* Define to 1 if you have <sys/wait.h> that is POSIX.1 compatible. */
 #undef HAVE_SYS_WAIT_H
 
@@ -130,6 +136,12 @@
 
 /* Define to the version of this package. */
 #undef PACKAGE_VERSION
+
+/* Define if we are compiling against ptrace on a 32-bit system */
+#undef PTRACE_LINUX32
+
+/* Define if we are compiling against ptrace on a 64-bit system */
+#undef PTRACE_LINUX64
 
 /* Define as the return type of signal handlers (`int' or `void'). */
 #undef RETSIGTYPE

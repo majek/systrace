@@ -490,7 +490,7 @@ static void
 usage(void)
 {
 	fprintf(stderr,
-	    "Usage: systrace [-AaCeitUu] [-c uid:gid] [-d policydir] [-f file]\n"
+	    "Usage: systrace [-AaCeitUuV] [-c uid:gid] [-d policydir] [-f file]\n"
 	    "\t [-g gui] [-p pid] command ...\n");
 	exit(1);
 }
@@ -674,7 +674,8 @@ main(int argc, char **argv)
 	while ((c = getopt(argc, argv, "Vc:aAeituUCE:d:g:f:p:")) != -1) {
 		switch (c) {
 		case 'V':
-			fprintf(stderr, "%s V%s\n", argv[0], VERSION);
+			fprintf(stderr, "%s V%s (%s)\n",
+			    argv[0], VERSION, intercept_version());
 			exit(0);
 		case 'c':
 			setcredentials = 1;
