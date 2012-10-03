@@ -213,7 +213,7 @@ struct linux_data {
 	TAILQ_HEAD(childq, linux_wait_pid) waitq;
 };
 
-static int notify_fd = -1; 
+static int notify_fd = -1;
 
 enum LINUX_SYSCALLS {
 	SYSTR_CLONE = 0,
@@ -237,15 +237,17 @@ linux_map_call(enum LINUX_CALL_TYPES call_type, enum LINUX_SYSCALLS call_number)
 			"clone", "getpid", "wait4", "execve", "setsid", "setpgid",
 			NULL
 		};
-		
+
 		int i;
 		for (i = 0; names[i] != NULL; ++i) {
 			int res = linux_syscall_number("linux", names[i]);
 			assert(res != -1);
 			mappings[LINUX32][i] = res;
+#ifdef PTRACE_LINUX64
 			res = linux_syscall_number("linux64", names[i]);
 			assert(res != -1);
 			mappings[LINUX64][i] = res;
+#endif
 		}
 		initialized = 1;
 	}
@@ -289,7 +291,7 @@ linux_init(void)
 	signal_add(&sigint_ev, NULL);
 	signal_set(&sigterm_ev, SIGTERM, linux_term_signal, NULL);
 	signal_add(&sigterm_ev, NULL);
-	
+
 	return (0);
 }
 
@@ -329,7 +331,7 @@ linux_attach(int fd, pid_t pid)
 		sigsyscall |= 0x80;
 	}
 #endif
-	
+
 	/* continue the child so that it can do something */
 	res = ptrace(PTRACE_SYSCALL, pid, (char *)1, 0);
 	if (res == -1)
@@ -363,7 +365,7 @@ linux_open(void)
 
 	if (notify_fd != -1)
 		errx(1, "already initialized.");
-	
+
 	if (socketpair(AF_UNIX, SOCK_STREAM, 0, pair) == -1)
 		err(1, "socketpair");
 
@@ -404,9 +406,9 @@ linux_getpid(pid_t pid)
 
 	/* no process group */
 	data->pgid = -1;
-	
+
 	TAILQ_INIT(&data->waitq);
-	
+
 	return (icpid);
 }
 
@@ -475,7 +477,7 @@ linux_find_pidstatus(struct intercept_pid *pid, pid_t cpid, int *status)
 			errx(1, "%s: intercept_findpid", __func__);
 		data = pid->data;
 	}
-	
+
 	TAILQ_FOREACH(wid, &data->waitq, next) {
 		/*
 		 * For a cpid != -1, we really need to implement process
@@ -534,13 +536,13 @@ linux_add_pidstatus(struct intercept_pid *pid,
 	DFPRINTF((stderr, "%s: pid %d get status of %d%s\n",
 		__func__, pid->pid, cpid,
 		data->flags & CLONE_DETACHED ? ": ignored" : ""));
-	
+
 	if (data->flags & CLONE_DETACHED)
 		return;
-	
+
 	if ((wid = malloc(sizeof(*wid))) == NULL)
 		err(1, "%s: malloc", __func__);
-	
+
 	wid->status = status;
 	wid->pid = cpid;
 	wid->pgid = pgid;
@@ -560,7 +562,7 @@ linux_childdead(pid_t pid, int status)
 	pid_t ppid;
 	int reap_parent = 0;
 	int already_detached = 0;
-	
+
 	if ((icpid = intercept_findpid(pid)) == NULL)
 		err(1, "%s: intercept_getpid", __func__);
 	data = icpid->data;
@@ -594,19 +596,19 @@ linux_childdead(pid_t pid, int status)
 		goto out;
 	}
 	parent_data = icpid->data;
-	
+
 	/* one child less */
 	parent_data->nchildren--;
 
 	if (data->flags & SYSTR_FLAGS_CLONE_DETACHED)
 		parent_data->nthreads_detached--;
-	
+
 	if (data->flags & SYSTR_FLAGS_CLONE_THREAD)
 		parent_data->nthreads--;
-	
+
 	DFPRINTF((stderr, "%s: parent %d: remaining children %d, threads %d\n",
 		__func__, ppid, parent_data->nchildren, parent_data->nthreads));
-	
+
 	linux_add_pidstatus(icpid, pid, data->pgid, status);
 
 	/* let's see if our parent can go now, too */
@@ -620,7 +622,7 @@ linux_childdead(pid_t pid, int status)
 
 	if (reap_parent)
 		linux_childdead(ppid, parent_data->wstatus);
-	
+
 out:
 	if (!already_detached) {
 		if (ptrace(PTRACE_DETACH, pid, (char *)1, 0) == -1) {
@@ -768,7 +770,7 @@ linux_policytranslate(int policy, int errnumber, long *result)
 	int res = 0;
 
 	DFPRINTF((stderr, "%s: policy %d\n", __func__, policy));
-	
+
 	switch (policy) {
 	case ICPOLICY_ASK:
 	case ICPOLICY_PERMIT:
@@ -784,7 +786,7 @@ linux_policytranslate(int policy, int errnumber, long *result)
 
 	if (res == -1)
 		error_code = linux_translate_errno(errnumber);
-	
+
 	*result = error_code;
 	return (res);
 }
@@ -860,7 +862,7 @@ linux_answer(int fd, pid_t pid, u_int32_t seqnr, short policy, int errnumber,
 					 call_type, pid, SYSCALL_NUM(&data->regs))))
 			data->flags |= SYSTR_FLAGS_SAWFORK;
 	}
-	
+
 	/* we need to deny here if possible */
 	res = ptrace(PTRACE_SYSCALL, pid, (char *)1, 0);
 	if (res == -1) {
@@ -869,7 +871,7 @@ linux_answer(int fd, pid_t pid, u_int32_t seqnr, short policy, int errnumber,
 			return (0);
 		warn("%s:%d %s: ptrace", __FILE__, __LINE__, __func__);
 	}
-	
+
 	/* no elevation */
 
 	return (res);
@@ -912,7 +914,7 @@ linux_assignpolicy(int fd, pid_t pid, int num)
 
 	data = icpid->data;
 	data->policy = num;
-	
+
 	return (0);
 }
 
@@ -941,7 +943,7 @@ linux_replace(int fd, pid_t pid, u_int16_t seqnr,
 {
 	DFPRINTF((stderr, "%s: pid %d\n", __func__, pid));
 	/* Replace is not easily supported by PTRACE */
-	
+
 	return (0);
 }
 
@@ -979,7 +981,7 @@ linux_io(int fd, pid_t pid, int op, void *addr, u_char *buf, size_t size)
 		buf += tocopy;
 		size -= tocopy;
 	}
-	
+
 	while (i < size) {
 		u.val = ptrace(PTRACE_PEEKDATA, pid, addr, 0);
 		/* Man page says this is how failure is indicated */
@@ -996,7 +998,7 @@ linux_io(int fd, pid_t pid, int op, void *addr, u_char *buf, size_t size)
 		addr = (char *)addr + sizeof(long);
 		buf += sizeof(long);
 	}
-	
+
 	return (0);
 }
 
@@ -1023,7 +1025,7 @@ linux_argument(int off, void *pargs, int argsize, void **pres)
 {
 	struct user_regs_struct *regs = pargs;
 	DFPRINTF((stderr, "%s: off %d\n", __func__, off));
-	
+
 	switch (off) {
 	case 0:
 		*pres = (void *)ARGUMENT_0(regs);
@@ -1057,7 +1059,7 @@ static int
 linux_set_argument(struct user_regs_struct *regs, int off, long val)
 {
 	DFPRINTF((stderr, "%s: set off %d to %ld\n", __func__, off, val));
-	
+
 	switch (off) {
 	case 0:
 		SET_ARGUMENT_0(regs, val);
@@ -1081,7 +1083,7 @@ linux_set_argument(struct user_regs_struct *regs, int off, long val)
 		/* out of bounds */
 		errx(1, "%s: seting bad argument %d", __func__, off);
 	}
-	
+
 
 	return (0);
 }
@@ -1090,7 +1092,7 @@ static int
 linux_lookuppolicy(struct intercept_pid *icpid, int sysnum)
 {
 	struct linux_data *data = icpid->data;
-	
+
 	if (sysnum < 0 || sysnum >= MAX_SYSCALLS)
 		errx(1, "%s: bad system call %d", __func__, sysnum);
 
@@ -1127,7 +1129,7 @@ linux_iswaitpid(const char *sysname)
 {
 	if (sysname == NULL)
 		return (0);
-	
+
 	return (!strcmp(sysname, "wait4") || !strcmp(sysname, "waitpid"));
 }
 
@@ -1143,7 +1145,7 @@ linux_rewritefork(pid_t pid, const char *sysname, struct user_regs_struct *regs)
 
 	DFPRINTF((stderr, "%s: pid %d rewriting %s to clone\n",
 		__func__, pid, sysname));
-	
+
 	SYSCALL_NUM(regs) = linux_map_call(linux_call_type(regs->cs), SYSTR_CLONE);
 	if (strcmp(sysname, "fork") == 0) {
 		int clone_flags = SIGCHLD | CLONE_PTRACE;
@@ -1183,7 +1185,7 @@ linux_havewaitchildren(
 	/* if there are no children around - we can return immediately */
 	if (data->nchildren <= data->nthreads_detached)
 		return (0);
-	
+
 	if (wait_pid > 0) {
 		struct intercept_pid *npid = intercept_findpid(wait_pid);
 		if (npid == NULL || npid->ppid != icpid->pid) {
@@ -1213,7 +1215,7 @@ linux_rewritewaitpid(pid_t pid, const char *sysname,
 	long orig_eax = SYSCALL_NUM(regs);
 
 	DFPRINTF((stderr, "%s: pid %d rewriting %s\n", __func__, pid, sysname));
-	
+
 	linux_argument(2, regs, sizeof(*regs), (void **)&woptions);
 
 	/* check the arguments for validity */
@@ -1276,7 +1278,7 @@ linux_rewritewaitpid(pid_t pid, const char *sysname,
 		linux_set_returncode(pid, -ECHILD);
 		return;
 	}
-		
+
 	/* treat properly */
 	data->flags |= SYSTR_FLAGS_PAUSING;
 
@@ -1289,11 +1291,11 @@ linux_rewritewaitpid(pid_t pid, const char *sysname,
 		pdata = ppid->data;
 		pdata->nthreads_waiting++;
 	}
-		
+
 	/* XXX - turn it into a pause */
 	DFPRINTF((stderr, "%s: pid %d wait4 pausing\n",	__func__, pid));
 	SYSCALL_NUM(regs) = linux_map_call(linux_call_type(regs->cs), SYSTR_GETPID);
-       
+
 	res = ptrace(PTRACE_SETREGS, pid, NULL, regs);
 	if (res == -1)
 		err(1, "%s: ptrace getregs", __func__);
@@ -1383,11 +1385,11 @@ linux_child_info(pid_t pid, pid_t cpid, struct user_regs_struct *regs)
 			err(1, "%s: intercept_findpid", __func__);
 		cdata = cicpid->data;
 	}
-	
+
 	DFPRINTF((stderr, "%s: pid %d (parent %d) clone to %d(%d): %lx\n",
 		__func__, pid, icpid->ppid, cpid,
 		cdata != NULL ? cdata->nchildren : 0, clone_flags));
-	
+
 	if (data->flags & SYSTR_FLAGS_CLONE_THREAD) {
 		/*
 		 * if we are a thread already then we need to attribute
@@ -1484,7 +1486,7 @@ linux_setsidreturn(pid_t pid, struct user_regs_struct *regs)
 {
 	struct intercept_pid *icpid = intercept_findpid(pid);
 	struct linux_data *data;
-	
+
 	DFPRINTF((stderr, "%s: pid %d setsid return\n", __func__, pid));
 	if (icpid == NULL)
 		err(1, "%s: intercept_findpid", __func__);
@@ -1499,11 +1501,11 @@ linux_setpgidreturn(pid_t pid, struct user_regs_struct *regs)
 	struct intercept_pid *icpid;
 	struct linux_data *data;
 	long set_pid, tmp;
-	
+
 	linux_argument(0, regs, sizeof(*regs), (void **)&set_pid);
 	DFPRINTF((stderr, "%s: pid %d setpgid return: target pid %d\n",
 		__func__, pid, set_pid));
-	
+
 	icpid = intercept_findpid(pid);
 	if (icpid == NULL)
 		err(1, "%s: intercept_findpid", __func__);
@@ -1577,7 +1579,7 @@ linux_systemcall(int fd, pid_t pid, struct intercept_pid *icpid)
 		}
 
 		if (-RETURN_CODE(regs) != ENOSYS) {
-		  /* 
+		  /*
 		   * On some Linux system's it's possible for the
 		   * child to return before we get the SIGSTOP.  That
 		   * also means that the child may return before the
@@ -1593,12 +1595,12 @@ linux_systemcall(int fd, pid_t pid, struct intercept_pid *icpid)
 		  }
 		}
 	}
-	
+
 	if (data->status == SYSCALL_START) {
 		char *emulation = "linux";
 		int policy;
 		long error_code;
-		
+
 		data->status = SYSCALL_END;
 
 		if (linux_isfork(sysname)) {
@@ -1610,13 +1612,13 @@ linux_systemcall(int fd, pid_t pid, struct intercept_pid *icpid)
 		} else if (linux_iswaitpid(sysname)) {
 			linux_rewritewaitpid(pid, sysname, regs);
 		}
-		
+
 		if (data->policy != -1) {
 			/* Check if we should use the fast path */
 			policy = linux_lookuppolicy(icpid, sysnumber);
 			if (policy == ICPOLICY_PERMIT) {
 				if (linux_isfork(sysname)) {
-					/* 
+					/*
 					 * At this point we know we've
 					 * seen a fork()-like call,
 					 * and it is going to be
@@ -1676,7 +1678,7 @@ linux_systemcall(int fd, pid_t pid, struct intercept_pid *icpid)
 				__func__, pid));
 			return;
 		}
-		
+
 		/* first stick the regular results */
 		if (data->flags & SYSTR_FLAGS_SAWWAITPID) {
 			pid_t res_pid;
@@ -1709,7 +1711,7 @@ linux_systemcall(int fd, pid_t pid, struct intercept_pid *icpid)
 		    RETURN_CODE(regs) == 0) {
 			linux_setpgidreturn(pid, regs);
 		}
-		
+
 		/* We did not want result interception */
 		if ((data->flags & SYSTR_FLAGS_RESULT) == 0) {
 			DFPRINTF((stderr, "%s: continue pid %d\n",
@@ -1772,7 +1774,7 @@ linux_wakeprocess_fill(struct intercept_pid *icpid, void *arg)
 {
 	struct linux_search_state *state = arg;
 	struct linux_data *data = icpid->data;
-	
+
 	if (icpid->ppid != state->ppid)
 		return;
 
@@ -1783,7 +1785,7 @@ linux_wakeprocess_fill(struct intercept_pid *icpid, void *arg)
 	/* and only if they are paused */
 	if ((data->flags & SYSTR_FLAGS_PAUSING) == 0)
 		return;
-	
+
 	if (state->offset >= state->size)
 		errx(1, "%s: overflow", __func__);
 	state->pids[state->offset++] = icpid;
@@ -1796,7 +1798,7 @@ linux_wakeprocesses(struct intercept_pid *icpid, pid_t wpid)
 	pid_t res_pid;
 	int res_status;
 	int resumed = 0;
-	
+
 	DFPRINTF((stderr, "%s: trying to wake up pid %d\n",
 		__func__, icpid->pid));
 
@@ -1855,7 +1857,7 @@ linux_wakeprocesses(struct intercept_pid *icpid, pid_t wpid)
 					    cdata->waitpid,
 					    &res_status)) == -1)
 					continue;
-				
+
 				linux_rewritewaitpid_return(cpid->pid, cdata,
 				    res_pid, res_status);
 				linux_resumeparent(cpid);
@@ -1894,7 +1896,7 @@ linux_read(int fd)
 	do {
 		DFPRINTF((stderr, "%s: waiting on syscall\n", __func__));
 		pid = waitpid(-1, &status, WUNTRACED | __WALL);
-		
+
 	} while (pid == -1 && errno == EINTR);
 
 	DFPRINTF((stderr, "%s: status %d pid %d\n", __func__, status, pid));
@@ -1957,7 +1959,7 @@ linux_read(int fd)
 					  "%s: making new child %d continue\n",
 					  __func__, pid));
 			} else if (data->policy == -1) {
-			  /* 
+			  /*
 			   * We are not going to wake this child up, until we
 			   * header back from our parent.
 			   */
@@ -1986,7 +1988,7 @@ linux_read(int fd)
 		systrace_dumppolicies(1);
 		exit(WEXITSTATUS(status));
 	}
-	
+
 	return (0);
 }
 
