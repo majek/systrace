@@ -1,4 +1,4 @@
-/*	$OpenBSD: openbsd-syscalls.c,v 1.10 2002/07/30 09:16:19 itojun Exp $	*/
+/*	$OpenBSD: openbsd-syscalls.c,v 1.29 2006/01/01 11:48:45 sturm Exp $	*/
 /*
  * Copyright 2002 Niels Provos <provos@citi.umich.edu>
  * All rights reserved.
@@ -47,12 +47,14 @@
 #include <compat/ultrix/ultrix_syscall.h>
 
 #define KTRACE
+#define PTRACE
 #define NFSCLIENT
 #define NFSSERVER
 #define SYSVSEM
 #define SYSVMSG
 #define SYSVSHM
 #define LFS
+#define RTHREADS
 #include <kern/syscalls.c>
 
 #include <compat/bsdos/bsdos_syscalls.c>
@@ -68,18 +70,19 @@
 #include <compat/svr4/svr4_syscalls.c>
 #include <compat/ultrix/ultrix_syscalls.c>
 #undef KTRACE
+#undef PTRACE
 #undef NFSCLIENT
 #undef NFSSERVER
 #undef SYSVSEM
 #undef SYSVMSG
 #undef SYSVSHM
 #undef LFS
+#undef RTHREADS
 
 #include <sys/ioctl.h>
 #include <sys/tree.h>
 #include <dev/systrace.h>
 
-#include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <fcntl.h>
@@ -146,6 +149,7 @@ static int obsd_setcwd(int, pid_t);
 static int obsd_restcwd(int);
 static int obsd_argument(int, void *, int, void **);
 static int obsd_read(int);
+static int obsd_scriptname(int, pid_t, char *);
 
 static int
 obsd_init(void)
@@ -193,7 +197,7 @@ obsd_open(void)
 	}
 
 	if (ioctl(fd, STRIOCCLONE, &cfd) == -1) {
-		warn("ioctl(SYSTR_CLONE)");
+		warn("ioctl(STRIOCCLONE)");
 		goto out;
 	}
 
@@ -370,7 +374,7 @@ obsd_answer(int fd, pid_t pid, u_int32_t seqnr, short policy, int nerrno,
 	ans.stra_seqnr = seqnr;
 	ans.stra_policy = obsd_translate_policy(policy);
 	ans.stra_flags = obsd_translate_flags(flags);
-	ans.stra_error = obsd_translate_errno(errno);
+	ans.stra_error = obsd_translate_errno(nerrno);
 
 	if (elevate != NULL) {
 		if (elevate->e_flags & ELEVATE_UID) {
@@ -387,6 +391,17 @@ obsd_answer(int fd, pid_t pid, u_int32_t seqnr, short policy, int nerrno,
 		return (-1);
 
 	return (0);
+}
+
+static int 
+obsd_scriptname(int fd, pid_t pid, char *scriptname)
+{
+	struct systrace_scriptname sn;
+
+	sn.sn_pid = pid;
+	strlcpy(sn.sn_scriptname, scriptname, sizeof(sn.sn_scriptname));
+
+	return (ioctl(fd, STRIOCSCRIPTNAME, &sn));
 }
 
 static int
@@ -562,7 +577,7 @@ obsd_read(int fd)
 	data = icpid->data;
 
 	current = data->current;
-
+	
 	seqnr = msg.msg_seqnr;
 	pid = msg.msg_pid;
 	switch (msg.msg_type) {
@@ -633,10 +648,10 @@ obsd_read(int fd)
 		intercept_child_info(msg.msg_pid,
 		    msg.msg_data.msg_child.new_pid);
 		break;
-#ifdef HAVE_MSG_EXECVE
+#ifdef SYSTR_MSG_EXECVE
 	case SYSTR_MSG_EXECVE: {
 		struct str_msg_execve *msg_execve = &msg.msg_data.msg_execve;
-
+		
 		intercept_newimage(fd, pid, msg.msg_policy, current->name,
 		    msg_execve->path, NULL);
 
@@ -645,6 +660,7 @@ obsd_read(int fd)
 		break;
 	}
 #endif
+
 #ifdef SYSTR_MSG_POLICYFREE
 	case SYSTR_MSG_POLICYFREE:
 		intercept_policy_free(msg.msg_policy);
@@ -674,4 +690,5 @@ struct intercept_system intercept = {
 	obsd_replace,
 	obsd_clonepid,
 	obsd_freepid,
+	obsd_scriptname,
 };

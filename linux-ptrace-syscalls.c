@@ -522,18 +522,6 @@ out:
 		ptrace(PTRACE_DETACH, pid, (char *)1, 0);
 }
 
-static int
-linux_syscall_number(const char *emulation, const char *name)
-{
-	int i;
-
-	for (i = 0; i < NR_syscalls; i++)
-		if (!strcmp(name, linux_syscallnames[i]))
-			return i;
-
-	return (-1);
-}
-
 static short
 linux_translate_policy(short policy)
 {
@@ -1353,6 +1341,7 @@ linux_systemcall(int fd, pid_t pid, struct intercept_pid *icpid)
 	struct linux_data *data = NULL;
 	struct user_regs_struct *regs;
 	const char *sysname = NULL;
+	int sysnumber = -1;
 	int res;
 	
 	data = icpid->data;
@@ -1370,15 +1359,16 @@ linux_systemcall(int fd, pid_t pid, struct intercept_pid *icpid)
 			err(1, "%s: ptrace getregs", __func__);
 		regs->eax = tmp.eax;
 	}
-	sysname = linux_syscall_name(pid, regs->orig_eax);
+	sysnumber = regs->orig_eax;
+	sysname = linux_syscall_name(pid, sysnumber);
 
 	DFPRINTF((stderr, "%s: pid %d %s(%ld) %s %ld\n",__func__, pid,
-		sysname, regs->orig_eax,
+		sysname, sysnumber,
 		data->status == SYSCALL_START ? "start" : "end",
 		-regs->eax));
 
 	if (data->status == SYSCALL_START) {
-		if (regs->orig_eax == -1) {
+		if (sysnumber == -1) {
 			/* Spurious stuff - ignore? */
 			DFPRINTF((stderr, "%s: spurious -1 on syscall name\n",
 				__func__));
@@ -1422,7 +1412,7 @@ linux_systemcall(int fd, pid_t pid, struct intercept_pid *icpid)
 		
 		if (data->policy != -1) {
 			/* Check if we should use the fast path */
-			policy = linux_lookuppolicy(icpid, regs->orig_eax);
+			policy = linux_lookuppolicy(icpid, sysnumber);
 			if (policy == ICPOLICY_PERMIT) {
 				res = ptrace(PTRACE_SYSCALL, pid, (char *)1, 0);
 				if (res == -1)
@@ -1439,7 +1429,7 @@ linux_systemcall(int fd, pid_t pid, struct intercept_pid *icpid)
 		}
 		
 		intercept_syscall(fd, pid, 1, data->policy,
-		    sysname, regs->orig_eax, "linux",
+		    sysname, sysnumber, "linux",
 		    (void *)regs, sizeof(*regs));
 	} else {
 		/* System call return */
@@ -1470,15 +1460,15 @@ linux_systemcall(int fd, pid_t pid, struct intercept_pid *icpid)
 			linux_set_returncode(pid, regs, data->error_code);
 			data->flags &= ~SYSTR_FLAGS_ERRORCODE;
 			data->error_code = 0;
-		} else if (regs->orig_eax == __NR_execve && !regs->eax) {
+		} else if (sysnumber == __NR_execve && !regs->eax) {
 			/* remember that we saw a successful execve */
 			data->flags |= SYSTR_FLAGS_SAWEXECVE;
 		} else if (data->flags & SYSTR_FLAGS_SAWFORK) {
 			data->flags &= ~SYSTR_FLAGS_SAWFORK;
 			linux_forkreturn(pid, regs);
-		} else if (regs->orig_eax == __NR_setsid && regs->eax >= 0) {
+		} else if (sysnumber == __NR_setsid && regs->eax >= 0) {
 			linux_setsidreturn(pid, regs);
-		} else if (regs->orig_eax == __NR_setpgid && regs->eax == 0) {
+		} else if (sysnumber == __NR_setpgid && regs->eax == 0) {
 			linux_setpgidreturn(pid, regs);
 		}
 		
@@ -1495,7 +1485,7 @@ linux_systemcall(int fd, pid_t pid, struct intercept_pid *icpid)
 		data->flags &= ~SYSTR_FLAGS_RESULT;
 
 		intercept_syscall_result(fd, pid, 1, data->policy,
-		    sysname, regs->orig_eax, "linux",
+		    sysname, sysnumber, "linux",
 		    (void *)regs, sizeof(*regs),
 		    -regs->eax, 0 /* rval */);
 	}

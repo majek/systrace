@@ -1696,7 +1696,7 @@ fi
 
 # Define the identity of the package.
  PACKAGE=systrace
- VERSION=1.6b
+ VERSION=1.6c
 
 
 cat >>confdefs.h <<_ACEOF
@@ -4240,6 +4240,7 @@ esac
 esac
 
 	SYSTR_HEADER="<dev/systrace.h>"
+	SYSTR_INC="-I/sys"
         ;;
 *-*-netbsd*)
 	case $LIBOBJS in
@@ -5160,7 +5161,8 @@ _ACEOF
 
 
 
-for ac_func in select poll socket
+
+for ac_func in select poll socket chflags
 do
 as_ac_var=`echo "ac_cv_func_$ac_func" | $as_tr_sh`
 echo "$as_me:$LINENO: checking for $ac_func" >&5

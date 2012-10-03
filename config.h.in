@@ -14,6 +14,9 @@
 /* Define to 1 if you have the `basename' function. */
 #undef HAVE_BASENAME
 
+/* Define to 1 if you have the `chflags' function. */
+#undef HAVE_CHFLAGS
+
 /* Define to 1 if you have the `dirname' function. */
 #undef HAVE_DIRNAME
 

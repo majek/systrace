@@ -250,6 +250,8 @@ extern struct intercept_translate ic_socktype;
 extern struct intercept_translate ic_pidname;
 extern struct intercept_translate ic_signame;
 extern struct intercept_translate ic_fcntlcmd;
+extern struct intercept_translate ic_memprot;
+extern struct intercept_translate ic_fileflags;
 
 extern struct intercept_translate ic_linux_oflags;
 

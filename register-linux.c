@@ -146,6 +146,16 @@ systrace_initcb(void)
 	intercept_register_translink("linux", "chmod", 0);
 	intercept_register_translation("linux", "chmod", 1, &ic_modeflags);
 
+ 	X(intercept_register_sccb("native", "fcntl", trans_cb, NULL));
+ 	intercept_register_translation("native", "fcntl", 1, &ic_fcntlcmd);
+
+	X(intercept_register_sccb("linux", "old_mmap", trans_cb, NULL));
+	intercept_register_translation("linux", "old_mmap", 2, &ic_memprot);
+	X(intercept_register_sccb("linux", "mmap2", trans_cb, NULL));
+	intercept_register_translation("linux", "mmap2", 2, &ic_memprot);
+	X(intercept_register_sccb("linux", "mprotect", trans_cb, NULL));
+	intercept_register_translation("linux", "mprotect", 2, &ic_memprot);
+
 	X(intercept_register_sccb("linux", "mknod", trans_cb, NULL));
 	intercept_register_translation("linux", "mknod", 0,
 	    &ic_translate_unlinkname);

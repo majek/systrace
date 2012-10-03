@@ -1,9 +1,9 @@
-dnl $Id: configure.in,v 1.21 2006/04/05 02:23:17 provos Exp $
+dnl $Id: configure.in,v 1.24 2006/04/08 20:44:11 provos Exp $
 AC_INIT(systrace.h)
 
 AC_CANONICAL_SYSTEM
 
-AM_INIT_AUTOMAKE(systrace, 1.6b)
+AM_INIT_AUTOMAKE(systrace, 1.6c)
 AM_CONFIG_HEADER(config.h)
 
 AC_PROG_MAKE_SET
@@ -34,6 +34,7 @@ case "$host" in
 	AC_LIBOBJ(register-openbsd)
 	AC_LIBOBJ(linux-translate)
 	SYSTR_HEADER="<dev/systrace.h>"
+	SYSTR_INC="-I/sys"
         ;;
 *-*-netbsd*)
 	AC_LIBOBJ(netbsd-syscalls)
@@ -85,7 +86,7 @@ AC_CHECK_TYPE(socklen_t, unsigned int)
 dnl Checks for library functions.
 AC_PROG_GCC_TRADITIONAL
 AC_TYPE_SIGNAL
-AC_CHECK_FUNCS(select poll socket)
+AC_CHECK_FUNCS(select poll socket chflags)
 AC_REPLACE_FUNCS(strlcpy strlcat basename dirname setproctitle)
 
 if test "x$ac_cv_func_basename" = "xyes"; then

@@ -29,6 +29,11 @@
  */
 
 #include <sys/types.h>
+
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif /* HAVE_CONFIG_H */
+
 #include <sys/param.h>
 #include <sys/tree.h>
 #include <limits.h>
@@ -37,10 +42,6 @@
 #include <stdio.h>
 #include <err.h>
 
-
-#ifdef HAVE_CONFIG_H
-#include "config.h"
-#endif /* HAVE_CONFIG_H */
 
 #include "intercept.h"
 #include "systrace.h"
@@ -181,6 +182,11 @@ systrace_initcb(void)
  	intercept_register_translation("netbsd", "kill", 1, &ic_signame);
  	X(intercept_register_sccb("netbsd", "fcntl", trans_cb, NULL));
  	intercept_register_translation("netbsd", "fcntl", 1, &ic_fcntlcmd);
+
+	X(intercept_register_sccb("netbsd", "mmap", trans_cb, NULL));
+	intercept_register_translation("netbsd", "mmap", 2, &ic_memprot);
+	X(intercept_register_sccb("netbsd", "mprotect", trans_cb, NULL));
+	intercept_register_translation("netbsd", "mprotect", 2, &ic_memprot);
 #else
 	X(intercept_register_gencb(gen_cb, NULL));
 	X(intercept_register_sccb("native", "open", trans_cb, NULL));
@@ -217,13 +223,18 @@ systrace_initcb(void)
 	    &ic_translate_unlinkname);
 	alias = systrace_new_alias("native", "unlink", "native", "fswrite");
 	systrace_alias_add_trans(alias, tl);
+	X(intercept_register_sccb("native", "truncate", trans_cb, NULL));
+	tl = intercept_register_transfn("native", "truncate", 0);
+	alias = systrace_new_alias("native", "truncate", "native", "fswrite");
+	systrace_alias_add_trans(alias, tl);
 
 	X(intercept_register_sccb("native", "mkfifo", trans_cb, NULL));
 	tl = intercept_register_transfn("native", "mkfifo", 0);
 	intercept_register_translation("native", "mkfifo", 1, &ic_modeflags);
+	alias = systrace_new_alias("native", "mkfifo", "native", "fswrite");
+	systrace_alias_add_trans(alias, tl);
 	X(intercept_register_sccb("native", "mknod", trans_cb, NULL));
-	intercept_register_translation("native", "mknod", 0,
-	    &ic_translate_unlinkname);
+	intercept_register_transfn("native", "mknod", 0);
 	intercept_register_translation("native", "mknod", 1, &ic_modeflags);
 
 	X(intercept_register_sccb("native", "chown", trans_cb, NULL));
@@ -234,12 +245,22 @@ systrace_initcb(void)
 	intercept_register_translation("native", "fchown", 0, &ic_fdt);
 	intercept_register_translation("native", "fchown", 1, &ic_uidt);
 	intercept_register_translation("native", "fchown", 2, &ic_gidt);
+	X(intercept_register_sccb("native", "lchown", trans_cb, NULL));
+	intercept_register_translation("native", "lchown", 0,
+	    &ic_translate_unlinkname);
+	intercept_register_translation("native", "lchown", 1, &ic_uidt);
+	intercept_register_translation("native", "lchown", 2, &ic_gidt);
 	X(intercept_register_sccb("native", "chmod", trans_cb, NULL));
 	intercept_register_transfn("native", "chmod", 0);
 	intercept_register_translation("native", "chmod", 1, &ic_modeflags);
 	X(intercept_register_sccb("native", "fchmod", trans_cb, NULL));
 	intercept_register_translation("native", "fchmod", 0, &ic_fdt);
 	intercept_register_translation("native", "fchmod", 1, &ic_modeflags);
+#ifdef HAVE_CHFLAGS	
+	X(intercept_register_sccb("native", "chflags", trans_cb, NULL));
+	intercept_register_transfn("native", "chflags", 0);
+	intercept_register_translation("native", "chflags", 1, &ic_fileflags);
+#endif
 	X(intercept_register_sccb("native", "readlink", trans_cb, NULL));
 	tl = intercept_register_translation("native", "readlink", 0,
 	    &ic_translate_unlinkname);
@@ -268,7 +289,8 @@ systrace_initcb(void)
 	X(intercept_register_sccb("native", "rename", trans_cb, NULL));
 	intercept_register_translation("native", "rename", 0,
 	    &ic_translate_unlinkname);
-	intercept_register_transfn("native", "rename", 1);
+	intercept_register_translation("native", "rename", 1,
+	    &ic_translate_unlinkname);
 	X(intercept_register_sccb("native", "symlink", trans_cb, NULL));
 	intercept_register_transstring("native", "symlink", 0);
 	intercept_register_transfn("native", "symlink", 1);
@@ -295,6 +317,11 @@ systrace_initcb(void)
  	intercept_register_translation("native", "kill", 1, &ic_signame);
  	X(intercept_register_sccb("native", "fcntl", trans_cb, NULL));
  	intercept_register_translation("native", "fcntl", 1, &ic_fcntlcmd);
+
+	X(intercept_register_sccb("native", "mmap", trans_cb, NULL));
+	intercept_register_translation("native", "mmap", 2, &ic_memprot);
+	X(intercept_register_sccb("native", "mprotect", trans_cb, NULL));
+	intercept_register_translation("native", "mprotect", 2, &ic_memprot);
 #endif
 
 #if !(defined(__NetBSD__) && !defined(HAVE_LINUX_FCNTL_H))

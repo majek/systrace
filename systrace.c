@@ -278,7 +278,6 @@ trans_cb(int fd, pid_t pid, int policynr,
 		kill(pid, SIGKILL);
 		return (ICPOLICY_NEVER);
 	}
-
  done:
 	if (ipid->uflags & SYSCALL_LOG)
 		dolog = 1;
@@ -289,7 +288,7 @@ trans_cb(int fd, pid_t pid, int policynr,
 		    action < ICPOLICY_NEVER ? "permit" : "deny",
 		    ipid->username, output);
 
-	/* Argument replacement in intercept might still fail */
+ 	/* Argument replacement in intercept might still fail */
 
 	return (action);
 }
@@ -310,7 +309,8 @@ gen_cb(int fd, pid_t pid, int policynr, const char *name, int code,
 		goto out;
 
 	if ((policy = systrace_findpolnr(policynr)) == NULL)
-		errx(1, "%s:%d: find %d", __func__, __LINE__, policynr);
+		errx(1, "%s:%d: find %d", __func__, __LINE__,
+		    policynr);
 
 	ipid = intercept_getpid(pid);
 	ipid->uflags = 0;
@@ -484,30 +484,30 @@ static void
 usage(void)
 {
 	fprintf(stderr,
-	    "Usage: systrace [-aAituUC] [-d poldir] [-g gui] [-f policy] \n"
-	    "\t [-c uid:gid] [-p pid] command ...\n");
+	    "Usage: systrace [-AaCeitUu] [-c uid:gid] [-d policydir] [-f file]\n"
+	    "\t [-g gui] [-p pid] command ...\n");
 	exit(1);
 }
 
 int
-requestor_start(char *path, int cradle)
+requestor_start(char *path, int docradle)
 {
 	char *argv[3];
 	int pair[2];
 	pid_t pid;
 
 	argv[0] = path;
-	argv[1] = cradle ? "-C" : NULL;
+	argv[1] = docradle ? "-C" : NULL;
 	argv[2] = NULL;
 
-	if (!cradle && socketpair(AF_UNIX, SOCK_STREAM, 0, pair) == -1)
+	if (!docradle && socketpair(AF_UNIX, SOCK_STREAM, 0, pair) == -1)
 		err(1, "socketpair");
 
 	pid = fork();
 	if (pid == -1)
 		err(1, "fork");
 	if (pid == 0) {
-		if (!cradle) {
+		if (!docradle) {
 			close(pair[0]);
 			if (dup2(pair[1], fileno(stdin)) == -1)
 				err(1, "dup2");
@@ -524,7 +524,7 @@ requestor_start(char *path, int cradle)
 
 	}
 
-	if (!cradle) {
+	if (!docradle) {
 		close(pair[1]);
 		if (dup2(pair[0], fileno(stdin)) == -1)
 			err(1, "dup2");
@@ -542,8 +542,9 @@ requestor_start(char *path, int cradle)
 	return (0);
 }
 
+
 static void
-cradle_setup(char *guipath)
+cradle_setup(char *pathtogui)
 {
 	struct stat sb;
 	char cradlepath[MAXPATHLEN], cradleuipath[MAXPATHLEN];
@@ -568,11 +569,11 @@ cradle_setup(char *guipath)
 	strlcpy(cradleuipath, dirpath, sizeof (cradleuipath));
 	strlcat(cradleuipath, "/" CRADLE_UI, sizeof (cradleuipath));
 
-	cradle_start(cradlepath, cradleuipath, guipath);
+	cradle_start(cradlepath, cradleuipath, pathtogui);
 }
 
 static int
-get_uid_gid(const char *optarg, uid_t *uid, gid_t *gid)
+get_uid_gid(const char *argument, uid_t *uid, gid_t *gid)
 {
 	struct group *gp;
 	struct passwd *pw;
@@ -580,7 +581,7 @@ get_uid_gid(const char *optarg, uid_t *uid, gid_t *gid)
 	char uid_gid_str[128];
 	char *endp, *g, *u;
 
-	strlcpy(uid_gid_str, optarg, sizeof(uid_gid_str));
+	strlcpy(uid_gid_str, argument, sizeof(uid_gid_str));
 	g = uid_gid_str;
 	u = strsep(&g, ":");
 

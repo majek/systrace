@@ -34,6 +34,8 @@
 #include <sys/tree.h>
 #include <sys/socket.h>
 #include <sys/signal.h>
+#include <sys/mman.h>
+#include <sys/stat.h>
 #include <inttypes.h>
 #include <limits.h>
 #include <stdlib.h>
@@ -131,17 +133,17 @@ linux_print_oflags(char *buf, size_t buflen, struct intercept_translate *tl)
 	p = str;
 	switch (flags & LINUX_O_ACCMODE) {
 	case LINUX_O_RDONLY:
-		strcpy(p, "ro");
+		strlcpy(p, "ro", str + sizeof str - p);
 		isread = 1;
 		break;
 	case LINUX_O_WRONLY:
-		strcpy(p, "wo");
+		strlcpy(p, "wo", str + sizeof str - p);
 		break;
 	case LINUX_O_RDWR:
-		strcpy(p, "rw");
+		strlcpy(p, "rw", str + sizeof str - p);
 		break;
 	default:
-		strcpy(p, "--");
+		strlcpy(p, "--", str + sizeof str - p);
 		break;
 	}
 
@@ -439,6 +441,117 @@ print_fcntlcmd(char *buf, size_t buflen, struct intercept_translate *tl)
 	return (0);
 }
 
+static int
+print_memprot(char *buf, size_t buflen, struct intercept_translate *tl)
+{
+	int prot = (intptr_t)tl->trans_addr;
+	char lbuf[64];
+
+	if (prot == PROT_NONE) {
+		strlcpy(buf, "PROT_NONE", buflen);
+		return (0);
+	} else
+		*buf = '\0';
+
+	while (prot) {
+		if (*buf)
+			strlcat(buf, "|", buflen);
+
+		if (prot & PROT_READ) {
+			strlcat(buf, "PROT_READ", buflen);
+			prot &= ~PROT_READ;
+			continue;
+		}
+
+		if (prot & PROT_WRITE) {
+			strlcat(buf, "PROT_WRITE", buflen);
+			prot &= ~PROT_WRITE;
+			continue;
+		}
+
+		if (prot & PROT_EXEC) {
+			strlcat(buf, "PROT_EXEC", buflen);
+			prot &= ~PROT_EXEC;
+			continue;
+		}
+
+		if (prot) {
+			snprintf(lbuf, sizeof(lbuf), "<unknown:0x%x>", prot);
+			strlcat(buf, lbuf, buflen);
+			prot = 0;
+			continue;
+		}
+	}
+
+	return (0);
+}
+
+#ifdef HAVE_CHFLAGS
+static int
+print_fileflags(char *buf, size_t buflen, struct intercept_translate *tl)
+{
+	unsigned int flags = (intptr_t)tl->trans_addr;
+	char lbuf[64];
+
+	*buf = '\0';
+
+	while (flags) {
+		if (*buf)
+			strlcat(buf, "|", buflen);
+
+		if (flags & UF_NODUMP) {
+			strlcat(buf, "UF_NODUMP", buflen);
+			flags &= ~UF_NODUMP;
+			continue;
+		}
+
+		if (flags & UF_IMMUTABLE) {
+			strlcat(buf, "UF_IMMUTABLE", buflen);
+			flags &= ~UF_IMMUTABLE;
+			continue;
+		}
+
+		if (flags & UF_APPEND) {
+			strlcat(buf, "UF_APPEND", buflen);
+			flags &= ~UF_APPEND;
+			continue;
+		}
+
+		if (flags & UF_OPAQUE) {
+			strlcat(buf, "UF_OPAQUE", buflen);
+			flags &= ~UF_OPAQUE;
+			continue;
+		}
+
+		if (flags & SF_ARCHIVED) {
+			strlcat(buf, "SF_ARCHIVED", buflen);
+			flags &= ~SF_ARCHIVED;
+			continue;
+		}
+
+		if (flags & SF_IMMUTABLE) {
+			strlcat(buf, "SF_IMMUTABLE", buflen);
+			flags &= ~SF_IMMUTABLE;
+			continue;
+		}
+
+		if (flags & SF_APPEND) {
+			strlcat(buf, "SF_APPEND", buflen);
+			flags &= ~SF_APPEND;
+			continue;
+		}
+
+		if (flags) {
+			snprintf(lbuf, sizeof(lbuf), "<unknown:0x%x>", flags);
+			strlcat(buf, lbuf, buflen);
+			flags = 0;
+			continue;
+		}
+	}
+
+	return (0);
+}
+#endif
 
 static int
 get_argv(struct intercept_translate *trans, int fd, pid_t pid, void *addr)
@@ -555,3 +668,14 @@ struct intercept_translate ic_fcntlcmd = {
 	"cmd",
 	NULL, print_fcntlcmd,
 };
+
+struct intercept_translate ic_memprot = {
+	"prot",
+	NULL, print_memprot,
+};
+#ifdef HAVE_CHFLAGS
+struct intercept_translate ic_fileflags = {
+	"flags",
+	NULL, print_fileflags,
+};
+#endif

@@ -337,4 +337,15 @@ linux_syscall_name(pid_t pidnr, int number)
 
 	return (linux_syscallnames[number]);
 }
+static int
+linux_syscall_number(const char *emulation, const char *name)
+{
+	int i;
+
+	for (i = 0; i < NR_syscalls && linux_syscallnames[i]; i++)
+		if (!strcmp(name, linux_syscallnames[i]))
+			return i;
+
+	return (-1);
+}
 
