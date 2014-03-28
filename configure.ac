@@ -88,7 +88,6 @@ AC_CHECK_TYPE(u_int64_t, unsigned long long)
 AC_CHECK_TYPE(u_int32_t, unsigned int)
 AC_CHECK_TYPE(u_int16_t, unsigned short)
 AC_CHECK_TYPE(u_int8_t, unsigned char)
-AC_CHECK_TYPE(in_addr_t, unsigned long)
 AC_CHECK_TYPE(socklen_t, unsigned int)
 
 dnl Checks for library functions.
