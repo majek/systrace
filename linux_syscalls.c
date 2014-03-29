@@ -733,7 +733,7 @@ linux_syscall_number(const char *emulation, const char *name)
 		syscallnames = &linux_syscallnames_64[0];
 #endif /* PTRACE_LINUX64 */
 	else
-		errx(1, "unkown linux emulation: %s", emulation);
+		errx(1, "unknown linux emulation: %s", emulation);
 
 	for (i = 0; i < NR_syscalls && syscallnames[i]; i++)
 		if (!strcmp(name, syscallnames[i]))
