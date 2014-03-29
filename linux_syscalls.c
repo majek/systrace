@@ -14,7 +14,7 @@
  * arch/i386/kernel/entry.S
  */
 
-char *linux_syscallnames[] = {
+const char *linux_syscallnames[] = {
 	"ni_syscall-1",
 	"exit",
 	"fork",
@@ -325,7 +325,7 @@ char *linux_syscallnames[] = {
  *   %d *\/\n",foo, $2);}} END {printf("%20s\n","NULL");}'
  */
 
-char *linux_syscallnames_64[] = {
+const char *linux_syscallnames_64[] = {
 	"read", /* 0 */
 	"write", /* 1 */
 	"open", /* 2 */

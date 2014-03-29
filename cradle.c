@@ -23,6 +23,9 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
 #include <sys/types.h>
 #include <sys/time.h>
 #include <sys/socket.h>
@@ -39,9 +42,15 @@
 #include <event.h>
 #include <stdio.h>
 #include <string.h>
+#ifdef HAVE_BSD_STRING_H
+#include <bsd/string.h>
+#endif
 #include <stdlib.h>
 #include <signal.h>
 #include <unistd.h>
+#ifdef HAVE_BSD_UNISTD_H
+#include <bsd/unistd.h>		/* for setproctitle */
+#endif
 #include <limits.h>
 #ifdef __linux__
 #include <bits/posix1_lim.h>

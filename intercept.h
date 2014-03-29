@@ -49,7 +49,7 @@ struct intercept_system {
 	int (*getsyscallnumber)(const char *, const char *);
 	int (*setcwd)(int, pid_t);
 	int (*restcwd)(int);
-	int (*io)(int, pid_t, int, void *, u_char *, size_t);
+	int (*io)(int, pid_t, int, void *, char *, size_t);
 	int (*getarg)(int, void *, int, void **);
 	int (*answer)(int, pid_t, u_int32_t, short, int, short,
 	    struct elevate *);

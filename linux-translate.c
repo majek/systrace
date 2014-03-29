@@ -29,6 +29,10 @@
  */
 
 
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif /* HAVE_CONFIG_H */
+
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <sys/tree.h>
@@ -37,6 +41,9 @@
 #include <limits.h>
 #include <stdlib.h>
 #include <string.h>
+#ifdef HAVE_BSD_STRING_H
+#include <bsd/string.h>
+#endif
 #include <unistd.h>
 #include <stdio.h>
 #include <fcntl.h>
@@ -44,10 +51,6 @@
 #include <err.h>
 #include <netdb.h>
 #include <linux_socket.h>
-
-#ifdef HAVE_CONFIG_H
-#include "config.h"
-#endif /* HAVE_CONFIG_H */
 
 #include "linux_socketcall.h"
 #include "linux_types.h"

@@ -29,13 +29,12 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <sys/types.h>
-#include <sys/param.h>
-
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif /* HAVE_CONFIG_H */
 
+#include <sys/types.h>
+#include <sys/param.h>
 #include <sys/stat.h>
 #include <sys/tree.h>
 #ifdef HAVE_SYS_TIME_H
@@ -45,6 +44,9 @@
 #include <limits.h>
 #include <stdlib.h>
 #include <string.h>
+#ifdef HAVE_BSD_STRING_H
+#include <bsd/string.h>
+#endif
 #include <time.h>
 #include <unistd.h>
 #include <grp.h>

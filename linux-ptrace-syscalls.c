@@ -62,6 +62,7 @@ typedef u_int32_t u32;
 #include <linux/ptrace.h>	/* for PTRACE_O_TRACESYSGOOD */
 #include <sys/queue.h>
 #include <sys/tree.h>
+#include <linux/sched.h>
 
 #define MAX_SYSCALLS 2048	/* maximum number of system calls we support */
 

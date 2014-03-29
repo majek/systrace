@@ -141,7 +141,15 @@ typedef unsigned int flex_uint32_t;
 
 /* Size of default input buffer. */
 #ifndef YY_BUF_SIZE
+#ifdef __ia64__
+/* On IA-64, the buffer size is 16k, not 8k.
+ * Moreover, YY_BUF_SIZE is 2*YY_READ_BUF_SIZE in the general case.
+ * Ditto for the __ia64__ case accordingly.
+ */
+#define YY_BUF_SIZE 32768
+#else
 #define YY_BUF_SIZE 16384
+#endif /* __ia64__ */
 #endif
 
 /* The state buf must be large enough to hold one state per character in the main buffer.
@@ -562,6 +570,10 @@ char *yytext;
  */
 
 #line 35 "lex.l"
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
+
 #include <sys/types.h>
 #include <sys/tree.h>
 
@@ -573,6 +585,9 @@ char *yytext;
 #include <err.h>
 #include <stdarg.h>
 #include <string.h>
+#ifdef HAVE_BSD_STRING_H
+#include <bsd/string.h>
+#endif
 
 #include "intercept.h"
 #include "systrace.h"
@@ -600,7 +615,7 @@ int quoteescape;
 		result = len; \
 	} \
 }
-#line 604 "lex.c"
+#line 619 "lex.c"
 
 #define INITIAL 0
 #define quote 1
@@ -682,7 +697,12 @@ static int input (void );
 
 /* Amount of stuff to slurp up with each read. */
 #ifndef YY_READ_BUF_SIZE
+#ifdef __ia64__
+/* On IA-64, the buffer size is 16k, not 8k */
+#define YY_READ_BUF_SIZE 16384
+#else
 #define YY_READ_BUF_SIZE 8192
+#endif /* __ia64__ */
 #endif
 
 /* Copy whatever the last rule matched to the standard output. */
@@ -783,9 +803,9 @@ YY_DECL
 	register char *yy_cp, *yy_bp;
 	register int yy_act;
     
-#line 75 "lex.l"
+#line 82 "lex.l"
 
-#line 789 "lex.c"
+#line 809 "lex.c"
 
 	if ( !(yy_init) )
 		{
@@ -870,162 +890,162 @@ do_action:	/* This label is used only to access EOF actions. */
 
 case 1:
 YY_RULE_SETUP
-#line 76 "lex.l"
+#line 83 "lex.l"
 { return ASK; }
 	YY_BREAK
 case 2:
 YY_RULE_SETUP
-#line 77 "lex.l"
+#line 84 "lex.l"
 { return DENY; }
 	YY_BREAK
 case 3:
 YY_RULE_SETUP
-#line 78 "lex.l"
+#line 85 "lex.l"
 { return PERMIT; }
 	YY_BREAK
 case 4:
 YY_RULE_SETUP
-#line 79 "lex.l"
+#line 86 "lex.l"
 { return AND; }
 	YY_BREAK
 case 5:
 YY_RULE_SETUP
-#line 80 "lex.l"
+#line 87 "lex.l"
 { return OR; }
 	YY_BREAK
 case 6:
 YY_RULE_SETUP
-#line 81 "lex.l"
+#line 88 "lex.l"
 { return NOT; }
 	YY_BREAK
 case 7:
 YY_RULE_SETUP
-#line 82 "lex.l"
+#line 89 "lex.l"
 { return MATCH; }
 	YY_BREAK
 case 8:
 YY_RULE_SETUP
-#line 83 "lex.l"
+#line 90 "lex.l"
 { return THEN; }
 	YY_BREAK
 case 9:
 YY_RULE_SETUP
-#line 84 "lex.l"
+#line 91 "lex.l"
 { return EQ; }
 	YY_BREAK
 case 10:
 YY_RULE_SETUP
-#line 85 "lex.l"
+#line 92 "lex.l"
 { return NEQ; }
 	YY_BREAK
 case 11:
 YY_RULE_SETUP
-#line 86 "lex.l"
+#line 93 "lex.l"
 { return SUB; }
 	YY_BREAK
 case 12:
 YY_RULE_SETUP
-#line 87 "lex.l"
+#line 94 "lex.l"
 { return NSUB; }
 	YY_BREAK
 case 13:
 YY_RULE_SETUP
-#line 88 "lex.l"
+#line 95 "lex.l"
 { return INPATH; }
 	YY_BREAK
 case 14:
 YY_RULE_SETUP
-#line 89 "lex.l"
+#line 96 "lex.l"
 { return RE; }
 	YY_BREAK
 case 15:
 YY_RULE_SETUP
-#line 90 "lex.l"
+#line 97 "lex.l"
 { return LOG; }
 	YY_BREAK
 case 16:
 YY_RULE_SETUP
-#line 91 "lex.l"
+#line 98 "lex.l"
 { return TRUE; }
 	YY_BREAK
 case 17:
 YY_RULE_SETUP
-#line 92 "lex.l"
+#line 99 "lex.l"
 { return THEN; }
 	YY_BREAK
 case 18:
 YY_RULE_SETUP
-#line 93 "lex.l"
+#line 100 "lex.l"
 { return LBRACE; }
 	YY_BREAK
 case 19:
 YY_RULE_SETUP
-#line 94 "lex.l"
+#line 101 "lex.l"
 { return RBRACE; }
 	YY_BREAK
 case 20:
 YY_RULE_SETUP
-#line 95 "lex.l"
+#line 102 "lex.l"
 { return IF; }
 	YY_BREAK
 case 21:
 YY_RULE_SETUP
-#line 96 "lex.l"
+#line 103 "lex.l"
 { return USER; }
 	YY_BREAK
 case 22:
 YY_RULE_SETUP
-#line 97 "lex.l"
+#line 104 "lex.l"
 { return GROUP; }
 	YY_BREAK
 case 23:
 YY_RULE_SETUP
-#line 98 "lex.l"
+#line 105 "lex.l"
 { return AS; }
 	YY_BREAK
 case 24:
 YY_RULE_SETUP
-#line 99 "lex.l"
+#line 106 "lex.l"
 { return COLON; }
 	YY_BREAK
 case 25:
 YY_RULE_SETUP
-#line 100 "lex.l"
+#line 107 "lex.l"
 { return COMMA; }
 	YY_BREAK
 case 26:
 YY_RULE_SETUP
-#line 101 "lex.l"
+#line 108 "lex.l"
 { return EQUAL; }
 	YY_BREAK
 case 27:
 YY_RULE_SETUP
-#line 102 "lex.l"
+#line 109 "lex.l"
 { return NEQUAL; }
 	YY_BREAK
 case 28:
 YY_RULE_SETUP
-#line 103 "lex.l"
+#line 110 "lex.l"
 { return LESSER; }
 	YY_BREAK
 case 29:
 YY_RULE_SETUP
-#line 104 "lex.l"
+#line 111 "lex.l"
 { return GREATER; }
 	YY_BREAK
 case 30:
 YY_RULE_SETUP
-#line 105 "lex.l"
+#line 112 "lex.l"
 { yylval.string = strdup(yytext); return STRING; }
 	YY_BREAK
 case 31:
 YY_RULE_SETUP
-#line 106 "lex.l"
+#line 113 "lex.l"
 { yylval.number = atoi(yytext); return NUMBER; }
 	YY_BREAK
 case 32:
 YY_RULE_SETUP
-#line 107 "lex.l"
+#line 114 "lex.l"
 { BEGIN(quote);
 		  *quotestr = '\0';
 		  quoteescape = 0;
@@ -1034,7 +1054,7 @@ YY_RULE_SETUP
 case 33:
 /* rule 33 can match eol */
 YY_RULE_SETUP
-#line 111 "lex.l"
+#line 118 "lex.l"
 {
 		  if (quoteescape) {
 			  switch (yytext[0]) {
@@ -1054,7 +1074,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 34:
 YY_RULE_SETUP
-#line 127 "lex.l"
+#line 134 "lex.l"
 {
 		  if (!quoteescape)
 		     quoteescape = 1;
@@ -1066,7 +1086,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 35:
 YY_RULE_SETUP
-#line 135 "lex.l"
+#line 142 "lex.l"
 {
 		  if (!quoteescape) {
 			BEGIN(INITIAL);
@@ -1080,47 +1100,47 @@ YY_RULE_SETUP
 	YY_BREAK
 case 36:
 YY_RULE_SETUP
-#line 145 "lex.l"
+#line 152 "lex.l"
 { return LSQBRACE; }
 	YY_BREAK
 case 37:
 YY_RULE_SETUP
-#line 146 "lex.l"
+#line 153 "lex.l"
 { return RSQBRACE; }
 	YY_BREAK
 case 38:
 YY_RULE_SETUP
-#line 147 "lex.l"
+#line 154 "lex.l"
 { ; }
 	YY_BREAK
 case 39:
 /* rule 39 can match eol */
 YY_RULE_SETUP
-#line 148 "lex.l"
+#line 155 "lex.l"
 { ; }
 	YY_BREAK
 case 40:
 YY_RULE_SETUP
-#line 149 "lex.l"
+#line 156 "lex.l"
 { ; }
 	YY_BREAK
 case 41:
 /* rule 41 can match eol */
 YY_RULE_SETUP
-#line 150 "lex.l"
+#line 157 "lex.l"
 { ; }
 	YY_BREAK
 case 42:
 YY_RULE_SETUP
-#line 151 "lex.l"
+#line 158 "lex.l"
 { yyerror("illegal token"); }
 	YY_BREAK
 case 43:
 YY_RULE_SETUP
-#line 152 "lex.l"
+#line 159 "lex.l"
 ECHO;
 	YY_BREAK
-#line 1124 "lex.c"
+#line 1144 "lex.c"
 case YY_STATE_EOF(INITIAL):
 case YY_STATE_EOF(quote):
 	yyterminate();
@@ -1879,8 +1899,8 @@ YY_BUFFER_STATE yy_scan_string (yyconst char * yystr )
 
 /** Setup the input buffer state to scan the given bytes. The next call to yylex() will
  * scan from a @e copy of @a bytes.
- * @param bytes the byte buffer to scan
- * @param len the number of bytes in the buffer pointed to by @a bytes.
+ * @param yybytes the byte buffer to scan
+ * @param _yybytes_len the number of bytes in the buffer pointed to by @a bytes.
  * 
  * @return the newly allocated buffer state object.
  */
@@ -2119,7 +2139,7 @@ void yyfree (void * ptr )
 
 #define YYTABLES_NAME "yytables"
 
-#line 152 "lex.l"
+#line 159 "lex.l"
 
 
 #ifndef yywrap
