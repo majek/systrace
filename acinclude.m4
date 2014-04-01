@@ -5,7 +5,7 @@ dnl
 dnl usage:      AC_DNET_SOCKADDR_SA_LEN
 dnl results:    HAVE_SOCKADDR_SA_LEN (defined)
 dnl
-AC_DEFUN(AC_DNET_SOCKADDR_SA_LEN,
+AC_DEFUN([AC_DNET_SOCKADDR_SA_LEN],
     [AC_MSG_CHECKING(for sa_len in sockaddr struct)
     AC_CACHE_VAL(ac_cv_dnet_sockaddr_has_sa_len,
         AC_TRY_COMPILE([

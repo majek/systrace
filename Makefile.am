@@ -18,7 +18,7 @@ include_HEADERS =
 
 CFLAGS = -Wall $(AM_CFLAGS)
 
-INCLUDES = @SYSTR_INC@ @EVENTINC@
+AM_CPPFLAGS = @SYSTR_INC@ @EVENTINC@
 
 man_MANS = systrace.1
 EXTRA_DIST = $(man_MANS) README openbsd-syscalls.c register-openbsd.c \

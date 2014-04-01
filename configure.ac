@@ -1,18 +1,14 @@
-dnl $Id: configure.in,v 1.29 2006/04/24 05:19:40 provos Exp $
-AC_INIT(systrace.h)
+AC_PREREQ([2.69])
+AC_INIT([systrace],[1.6f],[Niels Provos <provos@citi.umich.edu>])
+AC_CONFIG_SRCDIR([systrace.c])
+AC_CONFIG_HEADERS([config.h])
 
-AC_CANONICAL_SYSTEM
+AC_CANONICAL_TARGET
 
-AM_INIT_AUTOMAKE(systrace, 1.6f)
-AM_CONFIG_HEADER(config.h)
-
-AC_PROG_MAKE_SET
+AM_INIT_AUTOMAKE([-Wall foreign])
 
 dnl Checks for programs.
 AC_PROG_CC
-AC_PROG_RANLIB
-AC_PROG_INSTALL
-
 AM_PROG_LEX
 AC_PROG_YACC
 
@@ -21,7 +17,7 @@ AC_HEADER_STDC
 AC_HEADER_SYS_WAIT
 
 dnl XXX sys/{queue,tree}.h ?
-AC_CHECK_HEADERS(sys/ioctl.h sys/time.h unistd.h poll.h sched.h linux/sched.h linux/systrace.h linux/user.h sys/user.h asm/user.h sys/prctl.h libgen.h sched.h)
+AC_CHECK_HEADERS([sys/ioctl.h sys/time.h unistd.h poll.h sched.h linux/sched.h linux/systrace.h linux/user.h sys/user.h asm/user.h sys/prctl.h libgen.h sched.h bsd/string.h bsd/unistd.h])
 
 AC_DNET_SOCKADDR_SA_LEN
 
@@ -97,14 +93,13 @@ AC_CHECK_TYPE(socklen_t, unsigned int)
 
 dnl Checks for library functions.
 AC_PROG_GCC_TRADITIONAL
-AC_TYPE_SIGNAL
-AC_CHECK_FUNCS(select poll socket chflags prctl)
-AC_REPLACE_FUNCS(strlcpy strlcat basename dirname setproctitle getopt)
+
+AC_CHECK_FUNCS([select poll socket chflags prctl])
+AC_REPLACE_FUNCS([strlcpy strlcat basename dirname setproctitle getopt])
 
 if test "x$ac_cv_func_basename" = "xyes"; then
 	AC_MSG_CHECKING(for working basename)
-	AC_TRY_RUN(
-#include <sys/types.h>
+	AC_RUN_IFELSE([AC_LANG_SOURCE([[#include <sys/types.h>
 #include <string.h>
 int
 main(int argc, char **argv)
@@ -114,16 +109,15 @@ main(int argc, char **argv)
 	int len = strlen(name);
 	p = basename(name);
 	exit(len != strlen(name) || p == name + strlen("solaris/"));
-}, AC_MSG_RESULT(yes), [
+}]])],[AC_MSG_RESULT(yes)],[
 	AC_MSG_RESULT(no)
 	AC_LIBOBJ(basename)
-], AC_MSG_RESULT(yes))
+],[AC_MSG_RESULT(yes)])
 fi
 
 if test "x$ac_cv_func_dirname" = "xyes"; then
 	AC_MSG_CHECKING(for working dirname)
-	AC_TRY_RUN(
-#include <sys/types.h>
+	AC_RUN_IFELSE([AC_LANG_SOURCE([[#include <sys/types.h>
 #include <string.h>
 int
 main(int argc, char **argv)
@@ -133,10 +127,10 @@ main(int argc, char **argv)
 	int len = strlen(name);
 	p = dirname(name);
 	exit(len != strlen(name));
-}, AC_MSG_RESULT(yes), [
+}]])],[AC_MSG_RESULT(yes)],[
 	AC_MSG_RESULT(no)
 	AC_LIBOBJ(dirname)
-], AC_MSG_RESULT(yes))
+],[AC_MSG_RESULT(yes)])
 fi
 
 dnl Checks for libevent
@@ -160,7 +154,7 @@ AC_ARG_WITH(libevent,
         EVENTINC="-I$withval"
         EVENTLIB="-L$withval -levent"
      else
-        AC_ERROR(event.h or libevent.a not found in $withval)
+        AC_MSG_ERROR(event.h or libevent.a not found in $withval)
      fi
      ;;
   esac ],
@@ -174,7 +168,7 @@ AC_ARG_WITH(libevent,
      EVENTLIB="-levent"
   else
      AC_MSG_RESULT(no)
-     AC_ERROR(libevent not found)
+     AC_MSG_ERROR(libevent not found)
   fi
   AC_MSG_RESULT(yes) ]
 )
@@ -182,44 +176,35 @@ AC_SUBST(EVENTINC)
 AC_SUBST(EVENTLIB)
 
 AC_MSG_CHECKING([for symlink race condition protection])
-AC_TRY_COMPILE(
-[
+AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
 #include <sys/param.h>
 #include <sys/types.h>
 #include $SYSTR_HEADER
-],
-[ struct systrace_replace s; s.strr_flags[0] = 1; ],
-	[ AC_DEFINE(HAVE_STRR_FLAGS, 1,
+]], [[ struct systrace_replace s; s.strr_flags[0] = 1; ]])],[ AC_DEFINE(HAVE_STRR_FLAGS, 1,
 		[Define if systrace_replace has strr_flags])
-	  AC_MSG_RESULT([yes])], AC_MSG_RESULT([no])
-)
+	  AC_MSG_RESULT([yes])],[AC_MSG_RESULT(no)
+])
 
 AC_MSG_CHECKING([for st_mtimespec in struct stat])
-AC_TRY_COMPILE(
-[
+AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
 #include <sys/param.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
-],
-[ struct stat s; s.st_mtimespec.tv_sec = 0; ],
-	[ AC_DEFINE(HAVE_ST_MTIMSPEC, 1,	 
+]], [[ struct stat s; s.st_mtimespec.tv_sec = 0; ]])],[ AC_DEFINE(HAVE_ST_MTIMSPEC, 1,	 
 		[Define if struct stat has member st_mtimespec])
-	  AC_MSG_RESULT([yes])], AC_MSG_RESULT([no])
-)
+	  AC_MSG_RESULT([yes])],[AC_MSG_RESULT(no)
+])
 
 AC_MSG_CHECKING([for execve messages])
-AC_TRY_COMPILE(
-[
+AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
 #include <sys/param.h>
 #include <sys/types.h>
 #include $SYSTR_HEADER
-],
-[ SYSTR_MSG_EXECVE; ],
-	[ AC_DEFINE(HAVE_MSG_EXECVE, 1,
+]], [[ SYSTR_MSG_EXECVE; ]])],[ AC_DEFINE(HAVE_MSG_EXECVE, 1,
 		[Define if systrace has execve messages])
-	  AC_MSG_RESULT([yes])], AC_MSG_RESULT([no])
-)
+	  AC_MSG_RESULT([yes])],[AC_MSG_RESULT(no)
+])
 
 
 neederr=no
@@ -228,4 +213,5 @@ if test $neederr = yes; then
    AC_LIBOBJ(err)
 fi
 
-AC_OUTPUT(Makefile regress/Makefile)
+AC_CONFIG_FILES([Makefile regress/Makefile])
+AC_OUTPUT

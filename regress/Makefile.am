@@ -20,5 +20,5 @@ test_stat:
 	@sleep 1
 	@rm -rf ./tmp
 
-clean:
+clean-local:
 	rm -f ${DISTCLEANFILES}
