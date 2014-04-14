@@ -14,7 +14,7 @@
  * arch/i386/kernel/entry.S
  */
 
-char *linux_syscallnames[] = {
+const char *linux_syscallnames[] = {
 	"ni_syscall-1",
 	"exit",
 	"fork",
@@ -325,7 +325,7 @@ char *linux_syscallnames[] = {
  *   %d *\/\n",foo, $2);}} END {printf("%20s\n","NULL");}'
  */
 
-char *linux_syscallnames_64[] = {
+const char *linux_syscallnames_64[] = {
 	"read", /* 0 */
 	"write", /* 1 */
 	"open", /* 2 */
@@ -733,7 +733,7 @@ linux_syscall_number(const char *emulation, const char *name)
 		syscallnames = &linux_syscallnames_64[0];
 #endif /* PTRACE_LINUX64 */
 	else
-		errx(1, "unkown linux emulation: %s", emulation);
+		errx(1, "unknown linux emulation: %s", emulation);
 
 	for (i = 0; i < NR_syscalls && syscallnames[i]; i++)
 		if (!strcmp(name, syscallnames[i]))

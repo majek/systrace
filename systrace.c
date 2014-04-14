@@ -30,12 +30,11 @@
  */
 
 
-#include <sys/types.h>
-
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif /* HAVE_CONFIG_H */
 
+#include <sys/types.h>
 #include <sys/param.h>
 #include <sys/wait.h>
 #include <sys/tree.h>
@@ -59,6 +58,9 @@
 #include <signal.h>
 #include <syslog.h>
 #include <string.h>
+#ifdef HAVE_BSD_STRING_H
+#include <bsd/string.h>
+#endif
 #include <err.h>
 #include <errno.h>
 #include <grp.h>
