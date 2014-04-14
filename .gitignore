@@ -10,6 +10,7 @@
 /config.sub
 /configure
 /install-sh
+/lex.c
 /missing
 /regress/fork
 /regress/stat
