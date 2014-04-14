@@ -1,3 +1,7 @@
+Changes in 1.6g:
+ o make it compile again on 32-bit Linux
+ o do not create Linux64 policies when executing a 32-bit binary
+
 Changes in 1.6f:
  o prevent a 32-bit program from mapping in 64-bit system calls; from Chris Evans
  o support 64-bit linux on ptrace; as well; as 32-bit system calls on a 64-bit system

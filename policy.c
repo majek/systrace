@@ -145,7 +145,7 @@ systrace_setupdir(char *path)
 			errx(1, "HOME too long");
 	} else if (strlcpy(policydir, path, sizeof(policydir)) >= sizeof(policydir))
 		errx(1, "policy directory too long");
-		
+
 
 	if (stat(policydir, &sb) != -1) {
 		if (!(sb.st_mode & S_IFDIR))
@@ -192,7 +192,7 @@ systrace_findpolicy_wildcard(const char *name)
 
 	strlcpy(lookup, "*/", sizeof(lookup));
 	strlcat(lookup, basename(path), sizeof(lookup));
-	
+
 	tmp.name = lookup;
 	res = SPLAY_FIND(policytree, &policyroot, &tmp);
 	if (res == NULL)
@@ -246,7 +246,7 @@ systrace_newpolicy(const char *emulation, const char *name)
 
 	if ((tmp = systrace_findpolicy_wildcard(name)) != NULL)
 		return (tmp);
-	
+
 	tmp = calloc(1, sizeof(struct policy));
 	if (tmp == NULL)
 		return (NULL);
@@ -359,7 +359,7 @@ systrace_modifypolicy(int fd, int policynr, const char *name, short action)
 	    name, action);
 
 	/* Remember the kernel policy */
-	if (res != -1 && 
+	if (res != -1 &&
 	    (nr = intercept_getsyscallnumber(policy->emulation, name)) != -1)
 		policy->kerneltable[nr] = action;
 
@@ -431,7 +431,7 @@ systrace_addpolicy(const char *name)
 	return (systrace_readpolicy(file) != NULL ? 0 : -1);
 }
 
-/* 
+/*
  * Reads policy templates from the template directory.
  * These policies can be inserted during interactive policy
  * generation.
@@ -509,7 +509,7 @@ systrace_readtemplate(char *filename, struct policy *policy,
 	char line[_POSIX2_LINE_MAX], *p;
 	char *emulation, *name, *description;
 	int linenumber = 0;
-	
+
 	if ((fp = fopen(filename, "r")) == NULL)
 		return (NULL);
 
@@ -545,7 +545,7 @@ systrace_readtemplate(char *filename, struct policy *policy,
 
 			if (template != NULL)
 				continue;
-			
+
 			template = calloc(1, sizeof(struct template));
 			if (template == NULL)
 				err(1, "calloc");
@@ -669,7 +669,7 @@ systrace_policyprocess(struct policy *policy, char *p)
 	} else if (filter_parse_simple(rule, &action, &future) == 0)
 		resolved = 1;
 
-	/* 
+	/*
 	 * For now, everything that does not seem to be a valid syscall
 	 * does not get fast kernel policies even though the aliasing
 	 * system supports it.
@@ -811,7 +811,7 @@ systrace_updatepolicy(int fd, struct policy *policy)
 	memset(&mtimespec, 0, sizeof(mtimespec));
 	mtimespec.tv_sec = sb.st_mtime;
 #endif
-	    
+
 	/* Policy does not need updating */
 	if (timespeccmp(&mtimespec, &policy->ts_last, <=))
 		return (-1);
@@ -847,6 +847,7 @@ systrace_writepolicy(struct policy *policy)
 	char *p;
 	char tmpname[2*MAXPATHLEN];
 	char finalname[2*MAXPATHLEN];
+        const char *emulation;
 	struct filter *filter;
 	struct timeval now;
 
@@ -865,9 +866,18 @@ systrace_writepolicy(struct policy *policy)
 		return (-1);
 	}
 
+        /* For mixed 32-bit/64-bit execution on Linux, the emulation may
+         * switch from 64-bit to 32-bit on exec or the otherway around.
+         * TODO(niels): find a better way of doing this
+         */
+        emulation = policy->emulation;
+        if (TAILQ_FIRST(&policy->prefilters) != NULL)
+          emulation = TAILQ_FIRST(&policy->prefilters)->emulation;
+        else if (TAILQ_FIRST(&policy->filters) != NULL)
+          emulation = TAILQ_FIRST(&policy->filters)->emulation;
 
 	fprintf(fp, "Policy: %s, Emulation: %s\n",
-	    policy->name, policy->emulation);
+	    policy->name, emulation);
 	if (policy->flags & POLICY_DETACHED) {
 		fprintf(fp, "detached\n");
 	} else {

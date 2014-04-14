@@ -1,5 +1,5 @@
 AC_PREREQ([2.69])
-AC_INIT([systrace],[1.6f],[Niels Provos <provos@citi.umich.edu>])
+AC_INIT([systrace],[1.6g],[Niels Provos <provos@citi.umich.edu>])
 AC_CONFIG_SRCDIR([systrace.c])
 AC_CONFIG_HEADERS([config.h])
 
